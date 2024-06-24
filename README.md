@@ -1,4 +1,4 @@
-# Welcome to GZDoom!
+# Welcome to GZDoom! 
 
 [![Continuous Integration](https://github.com/ZDoom/gzdoom/actions/workflows/continuous_integration.yml/badge.svg)](https://github.com/ZDoom/gzdoom/actions/workflows/continuous_integration.yml)
 
