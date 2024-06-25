@@ -43,6 +43,7 @@
 #include "basics.h"
 #include "texturemanager.h"
 #include "palutil.h"
+#include "DAP/RuntimeEvents.h"
 
 extern cycle_t VMCycles[10];
 extern int VMCalls[10];
@@ -58,7 +59,7 @@ void ThrowVMException(VMException *x);
 #define IMPLEMENT_VMEXEC
 
 #if !defined(COMPGOTO) && defined(__GNUC__)
-#define COMPGOTO 1
+#define COMPGOTO 0
 #endif
 
 #if COMPGOTO

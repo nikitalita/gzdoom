@@ -605,6 +605,9 @@ file( GLOB HEADER_FILES
 	common/rendering/vulkan/textures/*.h
 	common/scripting/core/*h
 	common/scripting/vm/*h
+	common/scripting/vm/DAP/*.h
+	common/scripting/vm/DAP/Nodes/*.h
+	common/scripting/vm/DAP/Protocol/*.h
 	common/scripting/jit/*h
 	common/scripting/interface/*.h
 	common/scripting/backend/*.h
@@ -1171,7 +1174,26 @@ set (PCH_SOURCES
 	common/scripting/frontend/zcc_parser.cpp
 	common/scripting/backend/vmbuilder.cpp
 	common/scripting/backend/codegen.cpp
-	
+	common/scripting/vm/DAP/BreakpointManager.cpp
+	common/scripting/vm/DAP/DebugExecutionManager.cpp
+	common/scripting/vm/DAP/DebugServer.cpp
+	common/scripting/vm/DAP/IdHandleBase.cpp
+	common/scripting/vm/DAP/IdMap.cpp
+	common/scripting/vm/DAP/IdProvider.cpp
+	common/scripting/vm/DAP/Nodes/ArrayStateNode.cpp
+	common/scripting/vm/DAP/Nodes/LocalScopeStateNode.cpp
+	common/scripting/vm/DAP/Nodes/MetaNode.cpp
+	common/scripting/vm/DAP/Nodes/ObjectStateNode.cpp
+	common/scripting/vm/DAP/Nodes/StackFrameStateNode.cpp
+	common/scripting/vm/DAP/Nodes/StackStateNode.cpp
+	common/scripting/vm/DAP/Nodes/StateNodeBase.cpp
+	common/scripting/vm/DAP/Nodes/StructStateNode.cpp
+	common/scripting/vm/DAP/Nodes/ValueStateNode.cpp
+	common/scripting/vm/DAP/PexCache.cpp
+	common/scripting/vm/DAP/Protocol/struct_extensions.cpp
+	common/scripting/vm/DAP/RuntimeEvents.cpp
+	common/scripting/vm/DAP/RuntimeState.cpp
+	common/scripting/vm/DAP/ZScriptDebugger.cpp		
 	utility/nodebuilder/nodebuild.cpp
 	utility/nodebuilder/nodebuild_classify_nosse2.cpp
 	utility/nodebuilder/nodebuild_events.cpp
@@ -1266,9 +1288,10 @@ if( UNIX )
 		set( PROJECT_LIBRARIES ${PROJECT_LIBRARIES} ${Backtrace_LIBRARIES} )
 	endif()
 endif()
-
-target_link_libraries( zdoom ${PROJECT_LIBRARIES} lzma ${ZMUSIC_LIBRARIES} )
-
+find_package(cppdap CONFIG REQUIRED)
+find_package(eventpp CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
+target_link_libraries( zdoom ${PROJECT_LIBRARIES} lzma ${ZMUSIC_LIBRARIES} cppdap::cppdap eventpp::eventpp fmt::fmt)
 include_directories(
 	BEFORE
 	.

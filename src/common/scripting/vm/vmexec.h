@@ -54,7 +54,8 @@ static int ExecScriptFunc(VMFrameStack *stack, VMReturn *ret, int numret)
 	const double *konstf = sfunc->KonstF;
 	const FString *konsts = sfunc->KonstS;
 	const FVoidObj *konsta = sfunc->KonstA;
-	const VMOP *pc = sfunc->Code;
+	f->PC = sfunc->Code;
+	const VMOP *&pc = f->PC;
 
 	assert(!(f->Func->VarFlags & VARF_Native) && "Only script functions should ever reach VMExec");
 
@@ -70,7 +71,9 @@ static int ExecScriptFunc(VMFrameStack *stack, VMReturn *ret, int numret)
 	{
 #if !COMPGOTO
 	VM_UBYTE op;
-	for(;;) switch(op = pc->op, a = pc->a, op)
+	for(;;) {
+	DebugServer::RuntimeEvents::EmitInstructionExecutionEvent(stack, ret, numret, pc);
+	switch(op = pc->op, a = pc->a, op)
 #else
 	pc--;
 	NEXTOP;
@@ -1949,6 +1952,8 @@ static int ExecScriptFunc(VMFrameStack *stack, VMReturn *ret, int numret)
 	OP(NOP):
 		NEXTOP;
 	}
+	}
+
 	}
 #if 0
 	catch(VMException *exception)

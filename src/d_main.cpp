@@ -3799,6 +3799,8 @@ static int D_DoomMain_Internal (void)
 	while (1);
 }
 
+#include <common/scripting/vm/DAP/DebugServer.h>
+
 int GameMain()
 {
 	int ret = 0;
@@ -3815,7 +3817,8 @@ int GameMain()
 	C_InitCVars(0);
 	C_InstallHandlers(&cb);
 	SetConsoleNotifyBuffer();
-
+	auto debug_server = DebugServer::DebugServer();
+	debug_server.Listen();
 	try
 	{
 		ret = D_DoomMain_Internal();
