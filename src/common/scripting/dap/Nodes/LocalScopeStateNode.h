@@ -1,22 +1,20 @@
 #pragma once
 
-#include "common/scripting/vm/vmintern.h"
-
+#include <common/scripting/dap/GameInterfaces.h>
 #include <dap/protocol.h>
+
 #include "StateNodeBase.h"
-#include "../PexCache.h"
 
 namespace DebugServer
 {
-	class StackFrameStateNode : public StateNodeBase, public IStructuredState
+	class LocalScopeStateNode : public StateNodeBase, public IProtocolScopeSerializable, public IStructuredState
 	{
 		VMFrame* m_stackFrame;
 
 	public:
-		explicit StackFrameStateNode(VMFrame* stackFrame);
+		LocalScopeStateNode(VMFrame* stackFrame);
 
-		bool SerializeToProtocol(dap::StackFrame& stackFrame, PexCache* pexCache) const;
-
+		bool SerializeToProtocol(dap::Scope& scope) override;
 		bool GetChildNames(std::vector<std::string>& names) override;
 		bool GetChildNode(std::string name, std::shared_ptr<StateNodeBase>& node) override;
 	};

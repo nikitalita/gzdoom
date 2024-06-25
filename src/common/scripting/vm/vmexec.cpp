@@ -43,7 +43,7 @@
 #include "basics.h"
 #include "texturemanager.h"
 #include "palutil.h"
-#include "DAP/RuntimeEvents.h"
+#include <common/scripting/dap/RuntimeEvents.h>
 
 extern cycle_t VMCycles[10];
 extern int VMCalls[10];

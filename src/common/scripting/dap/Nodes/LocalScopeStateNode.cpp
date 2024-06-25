@@ -1,6 +1,6 @@
 #include "LocalScopeStateNode.h"
-#include "../Utilities.h"
-#include "../RuntimeState.h"
+#include <common/scripting/dap/Utilities.h>
+#include <common/scripting/dap/RuntimeState.h>
 
 namespace DebugServer
 {

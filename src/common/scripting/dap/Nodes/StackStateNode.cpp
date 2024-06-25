@@ -1,7 +1,7 @@
 #include "StackStateNode.h"
 
-#include "../RuntimeState.h"
-#include "../Utilities.h"
+#include <common/scripting/dap/RuntimeState.h>
+#include <common/scripting/dap/Utilities.h>
 
 #include <string>
 #include "StackFrameStateNode.h"

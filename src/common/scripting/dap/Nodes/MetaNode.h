@@ -4,9 +4,9 @@
 
 #include <functional>
 #include <variant>
-// #include "../FormMetadata.h"
+// #include <common/scripting/dap/FormMetadata.h>
 // #include "Meta.h"
-#include "../Utilities.h"
+#include <common/scripting/dap/Utilities.h>
 
 namespace DebugServer
 {
