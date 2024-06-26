@@ -26,6 +26,14 @@ namespace DebugServer
 			kPaused,
 			kStepping
 		};
+		enum class pauseReason
+		{
+			NONE = 0,
+			step,
+			breakpoint,
+			paused,
+			exception
+		};
 
 		std::mutex m_instructionMutex;
 		bool m_closed;

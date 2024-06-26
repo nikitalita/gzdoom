@@ -1,4 +1,5 @@
 #include "BreakpointManager.h"
+#include <cstdint>
 #include <regex>
 #include "Utilities.h"
 #include "RuntimeEvents.h"
@@ -110,14 +111,11 @@ namespace DebugServer
 
 	bool BreakpointManager::GetExecutionIsAtValidBreakpoint(VMFrameStack *stack, VMReturn *ret, int numret, const VMOP *pc)
 	{
-
-		auto& func = stack->TopFrame()->Func;
-		// check if we can cast m_stackFrame->Func to a VMScriptFunction
-		auto scriptFunction = dynamic_cast<VMScriptFunction*>(func);
-		if (!scriptFunction)
+		if (IsFunctionNative(stack->TopFrame()->Func))
 		{
 			return false;
 		}
+		auto scriptFunction = static_cast<VMScriptFunction*>(stack->TopFrame()->Func);
 		auto scriptName = scriptFunction->SourceFileName.GetChars();
 		const auto sourceReference = GetScriptReference(scriptName);
 
@@ -130,8 +128,39 @@ namespace DebugServer
 				auto ip = pc;
 				lineNo = scriptFunction->PCToLine(pc);
 				if (lineNo != -1 && scriptBreakpoints.breakpoints.find(lineNo) != scriptBreakpoints.breakpoints.end()) {
-					return true;
+					// we found a match, now check if we should pause
+					uint32_t PCIndex = int(pc - scriptFunction->Code);
+					//special handling for the first
+					if (scriptFunction->LineInfo[0].LineNumber == lineNo){
+						if (!m_last_seen || m_last_seen != &scriptBreakpoints.breakpoints[lineNo]){
+							// wait for `self` to be loaded
+							m_last_seen = &scriptBreakpoints.breakpoints[lineNo];
+							times_seen = 1;
+							return false;
+						} else if (times_seen == 1){
+							times_seen += 1;
+							// wait for `invoker` to be loaded
+							if (IsFunctionInvoked(scriptFunction)){
+								return false;
+							}
+							return true;
+						} else if (times_seen == 2 && IsFunctionInvoked(scriptFunction)){
+							times_seen += 1;
+							return true;
+						}
+					} else {
+						if (!m_last_seen || m_last_seen != &scriptBreakpoints.breakpoints[lineNo]){
+							m_last_seen = &scriptBreakpoints.breakpoints[lineNo];
+							times_seen = 1;
+							return true;
+						} 
+					}
+					// seen it before, don't break again
+					times_seen += 1;
+					return false;
 				}
+				m_last_seen = nullptr;
+				times_seen = 0;
 				return false;
 			}
 		}
