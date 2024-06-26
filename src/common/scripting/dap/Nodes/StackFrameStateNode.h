@@ -5,12 +5,14 @@
 #include <dap/protocol.h>
 #include "StateNodeBase.h"
 #include <common/scripting/dap/PexCache.h>
+#include <memory>
 
 namespace DebugServer
 {
 	class StackFrameStateNode : public StateNodeBase, public IStructuredState
 	{
 		VMFrame* m_stackFrame;
+		std::shared_ptr<StateNodeBase> m_localScope = nullptr;
 
 	public:
 		explicit StackFrameStateNode(VMFrame* stackFrame);

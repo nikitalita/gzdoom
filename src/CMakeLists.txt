@@ -1182,7 +1182,6 @@ set (PCH_SOURCES
 	common/scripting/dap/IdProvider.cpp
 	common/scripting/dap/Nodes/ArrayStateNode.cpp
 	common/scripting/dap/Nodes/LocalScopeStateNode.cpp
-	common/scripting/dap/Nodes/MetaNode.cpp
 	common/scripting/dap/Nodes/ObjectStateNode.cpp
 	common/scripting/dap/Nodes/StackFrameStateNode.cpp
 	common/scripting/dap/Nodes/StackStateNode.cpp

@@ -1,8 +1,8 @@
 #pragma once
-#if 0
 #include <common/scripting/dap/GameInterfaces.h>
 
 #include <dap/protocol.h>
+#include <map>
 #include "StateNodeBase.h"
 
 namespace DebugServer
@@ -11,12 +11,12 @@ namespace DebugServer
 	{
 		std::string m_name;
 
-		RE::BSTSmartPointer<RE::BSScript::Array> m_value;
-		RE::BSScript::TypeInfo* m_type;
-		RE::BSScript::TypeInfo _m_inst_type;
+		const VMValue m_value;
+		PType* m_type;
+		PType* m_elementType;
+		std::map<std::string, std::shared_ptr<StateNodeBase>> m_children;
 	public:
-		ArrayStateNode(std::string name, RE::BSScript::Array* value, RE::BSScript::TypeInfo* type);
-		ArrayStateNode(std::string name, RE::BSScript::Array* value, const RE::BSScript::TypeInfo &type);
+		ArrayStateNode(std::string name, VMValue value, PType* type);
 
 		virtual ~ArrayStateNode() override = default;
 
@@ -26,4 +26,3 @@ namespace DebugServer
 		bool GetChildNode(std::string name, std::shared_ptr<StateNodeBase>& node) override;
 	};
 }
-#endif

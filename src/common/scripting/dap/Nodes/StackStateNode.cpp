@@ -38,7 +38,7 @@ namespace DebugServer
 		std::vector<VMFrame*> frames;
 		RuntimeState::GetStackFrames(m_stackId, frames);
 
-		for (auto i = 0; i < frames.size(); i++)
+		for (size_t i = 0; i < frames.size(); i++)
 		{
 			names.push_back(std::to_string(i));
 		}
@@ -53,6 +53,11 @@ namespace DebugServer
 		{
 			return false;
 		}
+		if (m_children.find(level) != m_children.end())
+		{
+			node = m_children[level];
+			return true;
+		}
 
 		std::vector<VMFrame*> frames;
 		if (!RuntimeState::GetStackFrames(m_stackId, frames))
@@ -65,6 +70,7 @@ namespace DebugServer
 			return false;
 		}
 
+		// m_children[level] = std::make_shared<StackFrameStateNode>(frames.at(level));
 		node = std::make_shared<StackFrameStateNode>(frames.at(level));
 
 		return true;

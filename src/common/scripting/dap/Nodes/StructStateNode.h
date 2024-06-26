@@ -1,5 +1,4 @@
 #pragma once
-#if FALLOUT
 #include <common/scripting/dap/GameInterfaces.h>
 
 #include <dap/protocol.h>
@@ -11,10 +10,12 @@ namespace DebugServer
 	{
 		std::string m_name;
 
-		RE::BSTSmartPointer<RE::BSScript::Struct> m_value;
-		RE::BSTSmartPointer<RE::BSScript::StructTypeInfo> m_type;
+		const VMValue m_value;
+		PType * m_type;
+		caseless_path_map<std::shared_ptr<StateNodeBase>> m_children;
+
 	public:
-		StructStateNode(std::string name, RE::BSScript::Struct* value, RE::BSScript::StructTypeInfo* knownType);
+		StructStateNode(std::string name, const VMValue value, PType* knownType);
 
 		bool SerializeToProtocol(dap::Variable& variable) override;
 
@@ -22,4 +23,3 @@ namespace DebugServer
 		bool GetChildNode(std::string name, std::shared_ptr<StateNodeBase>& node) override;
 	};
 }
-#endif

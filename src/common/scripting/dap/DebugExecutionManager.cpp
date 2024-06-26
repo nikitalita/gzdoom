@@ -107,6 +107,8 @@ namespace DebugServer
 		// If we were the thread that paused, regain focus
 		if (!pauseReason.empty()) {
 			// Window::RegainFocus();
+			// also reset the state
+			m_runtimeState->Reset();
 		}
 
 	}

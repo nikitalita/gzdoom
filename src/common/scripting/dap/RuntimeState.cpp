@@ -3,11 +3,13 @@
 #include "Nodes/StateNodeBase.h"
 
 #include "Nodes/StackStateNode.h"
-// #include "Nodes/ObjectStateNode.h"
-
-// #include "Nodes/ArrayStateNode.h"
-// #include "Nodes/ValueStateNode.h"
+#include "Nodes/ObjectStateNode.h"
+#include "Nodes/StructStateNode.h"
+#include "Nodes/ArrayStateNode.h"
+#include "Nodes/ValueStateNode.h"
+#include "common/scripting/dap/GameInterfaces.h"
 #include "vm.h"
+#include <memory>
 
 
 namespace DebugServer
@@ -42,8 +44,12 @@ namespace DebugServer
 
 		elements.erase(elements.begin());
 
-		std::shared_ptr<StateNodeBase> currentNode = std::make_shared<StackStateNode>(stackId);
+		// if (!m_stackStateNode) {
+		// 	m_stackStateNode = std::make_shared<StackStateNode>(stackId);
+		// }
 
+		// std::shared_ptr<StateNodeBase> currentNode = m_stackStateNode;
+		std::shared_ptr<StateNodeBase> currentNode = std::make_shared<StackStateNode>(stackId);
 		while (!elements.empty() && currentNode)
 		{
 			auto structured = dynamic_cast<IStructuredState*>(currentNode.get());
@@ -152,58 +158,24 @@ namespace DebugServer
 		return false;
 	}
 
-	std::shared_ptr<StateNodeBase> RuntimeState::CreateNodeForVariable(std::string name, const VMValue* variable, int type)
+	std::shared_ptr<StateNodeBase> RuntimeState::CreateNodeForVariable(std::string name, VMValue variable, PType* p_type)
 	{
-		// if (type == REGT_POINTER)
-		// {	
-		// 	auto obj = RE::BSScript::get<RE::BSScript::Object>(*variable);
-		// 	auto typeinfo = obj ? obj->GetTypeInfo() : variable->GetType().GetObjectTypeInfo();
-  
-		// 	return std::make_shared<ObjectStateNode>(name, obj ? obj.get() : nullptr, typeinfo);
-		// }
-		// if (variable->is<RE::BSScript::Array>())
-		// {
-		// 	auto arr = RE::BSScript::get<RE::BSScript::Array>( *variable);
-		// 	if (arr){
-		// 		//auto &typeinfo = arr->type_info();
-		// 		return std::make_shared<ArrayStateNode>(name, arr ? arr.get() : nullptr, &arr->type_info());
-		// 	} else {
-		// 		auto type = variable->GetType();
-		// 		return std::make_shared<ArrayStateNode>(name, arr ? arr.get() : nullptr, type);
-		// 	}
-		// }
-		// if (variable->is<bool>() || variable->is<float>() || variable->is<std::int32_t>() || variable->is<std::uint32_t>() || variable->is<RE::BSFixedString>())
-		// {
-		// 	return std::make_shared<ValueStateNode>(name, variable);
-		// }
-		// if (variable->is<RE::BSScript::Variable>())
-		// {
-		// 	auto var = RE::BSScript::get<RE::BSScript::Variable>(*variable);
-		// 	return CreateNodeForVariable(name, var);
-		// }
-		
-		// if (variable->is<RE::BSScript::Struct>())
-		// {
-		// 	auto _struct = RE::BSScript::get<RE::BSScript::Struct>(*variable);
-		// 	auto typeinfo = _struct ? _struct->type.get() : variable->GetType().GetStructTypeInfo();
-
-		// 	return std::make_shared<StructStateNode>(name, _struct.get(), typeinfo);
-		// }
+		if (IsBasicNonPointerType(p_type) || (IsBasicType(p_type) && !p_type->isObjectPointer())){
+			return std::make_shared<ValueStateNode>(name, variable, p_type);
+		}
+		if (p_type->isClass() || p_type->isObjectPointer()){
+			return std::make_shared<ObjectStateNode>(name, variable, p_type);
+		} else if (p_type->isStruct() || p_type->isContainer()){
+			return std::make_shared<StructStateNode>(name, variable, p_type);
+		} else if (p_type->isArray() || p_type->isDynArray() || p_type->isStaticArray()){
+			return std::make_shared<ArrayStateNode>(name, variable, p_type);
+		}
 		return nullptr;
 	}
 
 	VMFrameStack * RuntimeState::GetStack(uint32_t stackId)
 	{
-		// const auto vm = VirtualMachine::GetSingleton();
-		// RE::BSSpinLockGuard lock(vm->runningStacksLock);
-
-		// const auto tableItem = vm->allRunningStacks.find(stackId);
-		// if (tableItem == vm->allRunningStacks.end())
-		// {
-		// 	return nullptr;
-		// }
-
-		// return tableItem->second;
+		// just one stack!
 		return m_GlobalVMStack;
 	}
 
@@ -242,5 +214,11 @@ namespace DebugServer
 		GetStackFrames(stack, frames);
 
 		return true;
+	}
+	void RuntimeState::Reset()
+	{
+		m_paths->Clear();
+		// m_stackStateNode.reset();
+		RuntimeState::m_GlobalVMStack = nullptr;
 	}
 }
