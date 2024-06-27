@@ -9,7 +9,7 @@
 namespace DebugServer
 {
 
-	ObjectStateNode::ObjectStateNode(const std::string name, VMValue value, PType* asClass, const bool subView) :
+	ObjectStateNode::ObjectStateNode(const std::string& name, VMValue value, PType* asClass, const bool subView) :
 		m_name(name), m_subView(subView), m_value(value), m_class(asClass)
 	{
 	}
@@ -36,9 +36,9 @@ namespace DebugServer
 			// TODO: turn this back on
 			// if(!IsVMValueValid(&m_value)) {
 			if(!m_value.a) {
-				variable.value = fmt::format("{} <NULL>", typeval);
+				variable.value = StringFormat("%s <NULL>", typeval.c_str());
 			} else {
-				variable.value = fmt::format("{} (0x{:08x})", typeval, (uint64_t) m_value.a);
+				variable.value = StringFormat("%s (0x%08x)", typeval.c_str(), (uint64_t) m_value.a);
 			}
 		}
 		else
@@ -87,13 +87,13 @@ namespace DebugServer
 				}
 			} catch (CRecoverableError& e) {
 				
-				LogError("Failed to get child names for object '{}' of type {}", m_name.c_str(), p_type->mDescriptiveName.GetChars());
-				LogError("Error: {}", e.what());
+				LogError("Failed to get child names for object '%s' of type %s", m_name.c_str(), p_type->mDescriptiveName.GetChars());
+				LogError("Error: %s", e.what());
 				return false;
 			}
 			return true;
 		}
-		LogError("Failed to get child names for object '{}' of type {}", m_name.c_str(), p_type->mDescriptiveName.GetChars());
+		LogError("Failed to get child names for object '%s' of type %s", m_name.c_str(), p_type->mDescriptiveName.GetChars());
 		return false;
 	}
 
@@ -109,7 +109,7 @@ namespace DebugServer
 			node = m_children[name];
 			return true;
 		}
-		LogError("Failed to get child node '{}' for object '{}'", name, m_name);
+		LogError("Failed to get child node '%s' for object '%s'", name.c_str(), m_name.c_str());
 		return false;
 	}
 

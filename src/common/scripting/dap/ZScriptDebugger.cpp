@@ -11,11 +11,8 @@
 #include "Nodes/StackFrameStateNode.h"
 
 #include "Nodes/StateNodeBase.h"
-#include "engineerrors.h"
-#include "fmt/format.h"
 
 #include <common/engine/filesystem.h>
-#include <filesystem>
 
 namespace DebugServer
 {
@@ -454,11 +451,11 @@ namespace DebugServer
 
 		std::vector<std::shared_ptr<StateNodeBase>> frameScopes;
 		if (request.frameId < 0) {
-			RETURN_DAP_ERROR(fmt::format("invalid frameId {}", static_cast<int64_t>(request.frameId)).c_str());
+			RETURN_DAP_ERROR(StringFormat("Invalid frameId %d", request.frameId).c_str());
 		}
 		auto frameId = static_cast<uint32_t>(request.frameId);
 		if (!m_runtimeState->ResolveChildrenByParentId(frameId, frameScopes)) {
-			RETURN_DAP_ERROR( fmt::format("No scopes for frameId {}", frameId).c_str() );
+			RETURN_DAP_ERROR( StringFormat("No such frameId %d", frameId).c_str());
 		}
 
 		for (const auto& frameScope : frameScopes)
@@ -490,7 +487,7 @@ namespace DebugServer
 
 		std::vector<std::shared_ptr<StateNodeBase>> variableNodes;
 		if (!m_runtimeState->ResolveChildrenByParentId(static_cast<uint32_t>(request.variablesReference), variableNodes)) {
-			RETURN_DAP_ERROR(fmt::format("No such variable reference {}", static_cast<uint32_t>(request.variablesReference)).c_str());
+			RETURN_DAP_ERROR(StringFormat("No such variablesReference %d", request.variablesReference).c_str());
 		}
 
 		// TODO: support `start`, `filter`, parameter
@@ -531,7 +528,7 @@ namespace DebugServer
       response.content = sourceContent;
 			return response;
 		}
-		RETURN_DAP_ERROR(fmt::format("Could not find source {}", source.name.value("")).c_str());
+		RETURN_DAP_ERROR(StringFormat("No source found for %s", source.path.value("").c_str()).c_str());
 	}
 	dap::ResponseOrError<dap::LoadedSourcesResponse> ZScriptDebugger::GetLoadedSources(const dap::LoadedSourcesRequest& request)
 	{

@@ -56,7 +56,7 @@ namespace DebugServer
 				if (IsVMValueValid(&m_variable)){
 					const FString &str = m_variable.s();
 					auto chars = isFStringValid(str) ? str.GetChars() : "";
-					variable.value = fmt::format("\"{}\"", chars);
+					variable.value = StringFormat("\"%s\"", chars);
 				} else {
 					variable.value = "<EMPTY>";
 				}

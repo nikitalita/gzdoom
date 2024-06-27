@@ -12,12 +12,12 @@ class RegistersNode : public StateNodeBase, public IProtocolVariableSerializable
 protected:
   VMFrame *m_stackFrame;
   caseless_path_map<std::shared_ptr<StateNodeBase>> m_children;
+  std::string m_name;
 public:
-  RegistersNode(VMFrame *stackFrame);
+  RegistersNode(std::string name, VMFrame *stackFrame);
 
   virtual int GetNumberOfRegisters() = 0;
 
-  virtual std::string GetName() = 0;
 
   virtual VMValue GetRegisterValue(int index)  = 0;
 
@@ -36,13 +36,12 @@ class PointerRegistersNode : public RegistersNode {
 public:
   int GetNumberOfRegisters() override;
 
-  std::string GetName() override;
 
   VMValue GetRegisterValue(int index) override;
 
   PType * GetRegisterType([[maybe_unused]] int index) override;
 
-  PointerRegistersNode(VMFrame *stackFrame) : RegistersNode(stackFrame) {};
+  PointerRegistersNode(std::string name, VMFrame *stackFrame) : RegistersNode(name, stackFrame) {};
 
   bool GetChildNode(std::string name, std::shared_ptr<StateNodeBase> &node);
 };
@@ -51,52 +50,48 @@ class StringRegistersNode : public RegistersNode {
 public:
   int GetNumberOfRegisters() override;
 
-  std::string GetName() override;
 
   VMValue GetRegisterValue(int index) override;
 
   PType * GetRegisterType([[maybe_unused]] int index) override;
 
-  StringRegistersNode(VMFrame *stackFrame) : RegistersNode(stackFrame) {};
+  StringRegistersNode(std::string name, VMFrame *stackFrame) : RegistersNode(name, stackFrame) {};
 };
 
 class FloatRegistersNode : public RegistersNode {
 public:
   int GetNumberOfRegisters() override;
 
-  std::string GetName() override;
 
   VMValue GetRegisterValue(int index) override;
 
   PType * GetRegisterType([[maybe_unused]] int index) override;
 
-  FloatRegistersNode(VMFrame *stackFrame) : RegistersNode(stackFrame) {};
+  FloatRegistersNode(std::string name, VMFrame *stackFrame) : RegistersNode(name, stackFrame) {};
 };
 
 class IntRegistersNode : public RegistersNode {
 public:
   int GetNumberOfRegisters() override;
 
-  std::string GetName() override;
 
   VMValue GetRegisterValue(int index) override;
 
   PType * GetRegisterType([[maybe_unused]] int index) override;
 
-  IntRegistersNode(VMFrame *stackFrame) : RegistersNode(stackFrame) {};
+  IntRegistersNode(std::string name, VMFrame *stackFrame) : RegistersNode(name, stackFrame) {};
 };
 
 class ParamsRegistersNode : public RegistersNode {
 public:
   int GetNumberOfRegisters() override;
 
-  std::string GetName() override;
 
   VMValue GetRegisterValue(int index) override;
 
   PType * GetRegisterType([[maybe_unused]] int index) override;
 
-  ParamsRegistersNode(VMFrame *stackFrame) : RegistersNode(stackFrame) {};
+  ParamsRegistersNode(std::string name, VMFrame *stackFrame) : RegistersNode(name, stackFrame) {};
 
   bool SerializeToProtocol(dap::Variable &variable) override;
 };

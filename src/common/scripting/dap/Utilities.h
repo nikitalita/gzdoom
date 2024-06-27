@@ -6,10 +6,10 @@
 #include <dap/protocol.h>
 #include <common/engine/printf.h>
 #include <map>
-#include <fmt/format.h>
 namespace DebugServer
 {
 
+  // Caseless comparison, required for script identifiers (ZScript/ACS/DECORATE are all case-insensitive)
 	struct ci_less
 	{
 		// case-independent (ci) compare_less binary function
@@ -26,12 +26,19 @@ namespace DebugServer
 			nocase_compare ());  // comparison
 		}
 	};
-	template <typename V>
-	using caseless_path_map = typename std::map<std::string, V, ci_less>;
 
-#define RETURN_DAP_ERROR(message) \
-	Printf("%s", message); \
-	return dap::Error(message);
+  template <typename V>
+  using caseless_path_map = typename std::map<std::string, V, ci_less>;
+
+  inline bool CaseInsensitiveEquals(const std::string & s1, const std::string & s2)
+  {
+    return std::lexicographical_compare
+            (s1.begin (), s1.end (),   // source range
+             s2.begin (), s2.end (),   // dest range
+             [] (const unsigned char& c1, const unsigned char& c2) {
+              return tolower (c1) == tolower (c2);
+            });  // comparison
+  }
 
 	template<typename... Args>
 	std::string StringFormat(const char* fmt, Args... args)
@@ -47,8 +54,12 @@ namespace DebugServer
 	template<typename... Args>
 	void LogError(const char* fmt, Args... args)
 	{
-		Printf(TEXTCOLOR_RED "%s\n", fmt::format(fmt, args...).c_str());
+		Printf(TEXTCOLOR_RED "%s\n", StringFormat(fmt, args...).c_str());
 	}
+
+#define RETURN_DAP_ERROR(message) \
+	LogError("%s", message); \
+	return dap::Error(message);
 
 
 	template <typename T>
@@ -121,14 +132,6 @@ namespace DebugServer
 		std::string r_str = p_str;
 		ToLower(r_str);
 		return r_str;
-	}
-
-	inline bool CaseInsensitiveEquals(std::string a, std::string b)
-	{
-		ToLower(a);
-		ToLower(b);
-
-		return a == b;
 	}
 
 	inline std::string DemangleName(std::string name)

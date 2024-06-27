@@ -20,7 +20,8 @@ namespace DebugServer
 		std::string ScriptName = " <Native>";
 		if (IsFunctionNative(m_stackFrame->Func))
 		{
-			stackFrame.name = m_stackFrame->Func->PrintableName + ScriptName;
+			stackFrame.name = m_stackFrame->Func->PrintableName;
+      stackFrame.name += " " + ScriptName;
 			return true;
 		}
 		auto scriptFunction = static_cast<VMScriptFunction*>(m_stackFrame->Func);
@@ -34,7 +35,7 @@ namespace DebugServer
 				stackFrame.line = lineNumber;
 			}
 		}
-		// TODO: Something with state
+		// TODO: Something with state pointer if we can get it?
 		// if (strcmp(m_stackFrame->owningFunction->GetStateName().c_str(), "") != 0)
 		// {
 		// 	name = StringFormat("%s (%s)", name.c_str(), m_stackFrame->owningFunction->GetStateName().c_str());
