@@ -30,55 +30,81 @@ namespace DebugServer
 		uint32_t reference = GetScriptReference(scriptName);
 
 		const auto entry = m_scripts.find(reference);
-		if (entry == m_scripts.end())
-		{
-			auto binary = std::make_shared<Pex::Binary>();
-			// scriptName without the leading <ProjectArchive.pk3>: part
-			auto colonPos = scriptName.find(':');
-			auto truncScriptPath = scriptName;
-			std::string archiveName = "";
-			if (colonPos != std::string::npos)
-			{
-				truncScriptPath = scriptName.substr(colonPos + 1);
-				archiveName = scriptName.substr(0, colonPos);
-			}
-			int lump = fileSystem.FindFile(truncScriptPath.c_str());
-			if (lump != -1)
-			{
-				binary->scriptName = truncScriptPath;
-				binary->archiveName = archiveName;
-				binary->source = "";
-				binary->sourceData = dap::Source();
-				m_scripts.emplace(reference, binary);
-				return binary;
-			}
-			// if (LoadPexData(scriptName, *binary))
-			// {
-			// 	m_scripts.emplace(reference, binary);
-			// 	return binary;
-			// }
-		}
+		if (entry != m_scripts.end()) {
+      return entry->second;
+    }
+    auto binary = std::make_shared<Pex::Binary>();
+    // scriptName without the leading <ProjectArchive.pk3>: part
+    auto colonPos = scriptName.find(':');
+    auto truncScriptPath = scriptName;
+    std::string archiveName = "";
+    if (colonPos != std::string::npos)
+    {
+      truncScriptPath = scriptName.substr(colonPos + 1);
+      archiveName = scriptName.substr(0, colonPos);
+    }
 
-		return entry != m_scripts.end() ? entry->second : nullptr;
+    int lump = fileSystem.FindFile(truncScriptPath.c_str());
+    // just the basename of the script, look for either '/' or '\\'
+    if (lump != -1)
+    {
+      if (archiveName.empty()){
+        // get the namespace from the lump
+        archiveName = fileSystem.GetResourceFileName(fileSystem.GetFileContainer(lump));
+      }
+      binary->scriptName = truncScriptPath.substr(truncScriptPath.find_last_of("/\\") + 1);
+      binary->scriptPath = truncScriptPath;
+      binary->archiveName = archiveName;
+      binary->source = "";
+      binary->sourceData = dap::Source();
+      m_scripts.emplace(reference, binary);
+      return binary;
+    }
+    // if (LoadPexData(scriptName, *binary))
+    // {
+    // 	m_scripts.emplace(reference, binary);
+    // 	return binary;
+    // }
+
+
+		return nullptr;
 	}
+  bool PexCache::GetDecompiledSourceByRef(int ref, std::string& decompiledSource)
+  {
+    auto binary = GetCachedScript(ref);
+    if (!binary)
+    {
+      return false;
+    }
+    auto lump = fileSystem.FindFile(binary->scriptPath.c_str());
+    if (lump == -1)
+    {
+      return false;
+    }
+    auto size = fileSystem.FileLength(lump);
+    decompiledSource.reserve(size);
+    // Godspeed, you magnificent bastard
+    fileSystem.ReadFile(lump, decompiledSource.data());
+    return true;
+  }
 
-	bool PexCache::GetDecompiledSource(const std::string& scriptName, std::string& decompiledSource)
+	bool PexCache::GetDecompiledSource(const std::string& fqpn, std::string& decompiledSource)
 	{
-		// const auto binary = this->GetScript(scriptName);
-		// if (!binary)
-		// {
-		// 	return false;
-		// }
-
-		// std::basic_stringstream<char> pscStream;
-		// Decompiler::PscCoder coder(new Decompiler::StreamWriter(pscStream));
-
-		// coder.code(*binary);
-
-		// decompiledSource = pscStream.str();
-
-		// return true;
-		return false;
+		 const auto binary = this->GetScript(fqpn);
+		 if (!binary)
+		 {
+		 	return false;
+		 }
+     auto lump = fileSystem.FindFile(binary->scriptPath.c_str());
+      if (lump == -1)
+      {
+        return false;
+      }
+      auto size = fileSystem.FileLength(lump);
+      decompiledSource.reserve(size);
+      // Godspeed, you magnificent bastard
+      fileSystem.ReadFile(lump, decompiledSource.data());
+      return true;
 	}
 
 	bool PexCache::GetSourceData(const std::string& scriptName, dap::Source& data)
@@ -91,19 +117,14 @@ namespace DebugServer
 		}
 		std::string normname = NormalizeScriptName(scriptName);
 
-		// split on ':'
-		auto colonPos = normname.find(':');
-		if (colonPos != std::string::npos)
-		{
-			normname = normname.substr(colonPos+1);
-		}
 		// auto headerSrcName = binary->getHeader().getSourceFileName();
 		// if (headerSrcName.empty()) {
 		// 	headerSrcName = ScriptNameToPSCPath(normname);
 		// }
-		data.name = normname;
-		data.path = normname;
+		data.name = binary->scriptName;
+		data.path = binary->scriptPath;
 		data.sourceReference = sourceReference; // TODO: Remember to remove this when we get script references from the extension working
+    data.origin = binary->archiveName;
 		return true;
 	}
 

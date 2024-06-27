@@ -3,9 +3,38 @@
 #include "common/scripting/dap/GameInterfaces.h"
 #include "types.h"
 #include "vm.h"
+#include <common/audio/sound/s_soundinternal.h>
+#include <palettecontainer.h>
+#include <texturemanager.h>
+#include <info.h>
 
 namespace DebugServer
 {
+  static const char * basicTypeNames[] = {
+          "NONE",
+          "uint32",
+          "int32",
+          "uint16",
+          "int16",
+          "uint8",
+          "int8",
+          "float",
+          "double",
+          "bool",
+          "string",
+          "name",
+          "SpriteID",
+          "TextureID",
+          "TranslationID",
+          "Sound",
+          "Color",
+          "Enum",
+          "StateLabel",
+          "pointer",
+          "VoidPointer",
+          nullptr
+  };
+
 	ValueStateNode::ValueStateNode(std::string name, VMValue variable, PType* type) :
 		m_name(name), m_variable(variable), m_type(type)
 	{
@@ -19,7 +48,10 @@ namespace DebugServer
 		// 	variable.value = "NULL";
 		// 	return variable;
 		// }
-		if (m_type == TypeString){
+    auto basic_type = GetBasicType(m_type);
+    variable.type = basicTypeNames[basic_type];
+
+    if (m_type == TypeString){
 				variable.type = "string";
 				if (IsVMValueValid(&m_variable)){
 					const FString &str = m_variable.s();
@@ -38,42 +70,27 @@ namespace DebugServer
 				auto fake_function = PType::toFunctionPointer(m_type)->FakeFunction;
 				variable.value = fake_function->SymbolName.GetChars();
 			} else {
-				auto type = m_type->toPointer()->PointedType;
-				variable.type = std::string("Pointer(") + type->DescriptiveName() + ")";
+				auto pointedType = m_type->toPointer()->PointedType;
+				variable.type = std::string("Pointer(") + pointedType->DescriptiveName() + ")";
 				if (!IsVMValueValid(&m_variable)) {
-					variable.value = "NULL";
-				} else {
+          variable.value = "NULL";
+				} else if (pointedType->isScalar() && !pointedType->isPointer()) {
+          // TODO: TypeState
+
 					// TODO: fix this
-					auto val = DerefValue(&m_variable, GetBasicType(type));
-					auto deref_var = ToVariable(&val, type);
+					auto val = DerefValue(&m_variable, GetBasicType(pointedType));
+					auto deref_var = ToVariable(&val, pointedType);
 					variable.value = StringFormat("0x%08x {%s}", (uint64_t)(m_variable.a), deref_var.value.c_str());
-				}
-			}
+        } else {
+          // just display the address
+          variable.value = StringFormat("0x%08x", (uint64_t) (m_variable.a));
+        }
+      }
 		} else if (m_type->isInt()){ // explicitly not TYPE_IntNotInt
-			auto basic_type = GetBasicType(m_type);
-			if (basic_type == BASIC_uint32){
-				variable.type = "uint32";
-			} else if (basic_type == BASIC_int32){
-				variable.type = "int32";
-			} else if (basic_type == BASIC_uint16){
-				variable.type = "uint16";
-			} else if (basic_type == BASIC_int16){
-				variable.type = "int16";
-			} else if (basic_type == BASIC_uint8){
-				variable.type = "uint8";
-			} else if (basic_type == BASIC_int8){
-				variable.type = "int8";
-			} else {
-				variable.type = "int";
-			}
-			variable.value = StringFormat("%d", basic_type == BASIC_uint32 ? static_cast<uint32_t>(m_variable.i) : m_variable.i);
+      int64_t val = TruncateVMValue(&m_variable, basic_type).i;
+      variable.value = StringFormat("%d", basic_type == BASIC_uint32 ? static_cast<uint32_t>(val) : val);
 		} else if (m_type->isFloat()){
-			if (m_type == TypeFloat32){
-				variable.type = "float";
-			} else {
-				variable.type = "double";
-			}
-			variable.value = StringFormat("%f", m_variable.f);
+			variable.value = StringFormat("%f", TruncateVMValue(&m_variable, basic_type).f);
 		} else if (m_type->Flags & TT::TypeFlags::TYPE_IntNotInt){
 			// PBool
 			// PName
@@ -89,27 +106,36 @@ namespace DebugServer
 				variable.value = m_variable.i ? "true" : "false";
 			} else if (m_type == TypeName){
 				variable.type = "Name";
-				// TODO: how to get the name?
-				variable.value = StringFormat("Name(%d)", m_variable.i);
+        auto name = FName((ENamedName)(m_variable.i));
+				variable.value = StringFormat("Name# %d: \'%s\'", m_variable.i, name.GetChars());
 			} else if (m_type == TypeSpriteID){
 				variable.type = "SpriteID";
-				variable.value = StringFormat("SpriteID(%d)", m_variable.i);
+        // TODO: Get the sprite name? how do they get the sprite name into the serializer??
+				variable.value = StringFormat("SpriteID# %d", m_variable.i);
 			} else if (m_type == TypeTextureID){
 				variable.type = "TextureID";
-				variable.value = StringFormat("TextureID(%d)", m_variable.i);
+        int val = m_variable.i;
+        int *val_ptr = &val;
+        FTextureID textureID = *reinterpret_cast<FTextureID*>(val_ptr);
+        FGameTexture * gameTexture = TexMan.GetGameTexture(textureID);
+        const char * tex_name = gameTexture ? gameTexture->GetName().GetChars() : "<INVALID>";
+				variable.value = StringFormat("TextureID# %d (%s)", m_variable.i, tex_name);
 			} else if (m_type == TypeTranslationID){
 				variable.type = "TranslationID";
-				variable.value = StringFormat("TranslationId(%d)", m_variable.i);
+        FTranslationID translationID = FTranslationID::fromInt(m_variable.i);
+				variable.value = StringFormat("TranslationID# %d {type: %d, index: %d}", m_variable.i, GetTranslationType(translationID), GetTranslationIndex(translationID));
 			} else if (m_type == TypeSound){
 				variable.type = "Sound";
-				variable.value = StringFormat("Sound(%d)", m_variable.i);
+        const char *soundName = (m_variable.i > 0 && (uint32_t)m_variable.i < soundEngine->GetNumSounds()) ? soundEngine->GetSoundName(FSoundID::fromInt(m_variable.i)) : "<INVALID>";
+				variable.value = StringFormat("Sound# %d (%s)", m_variable.i, soundName);
 			} else if (m_type == TypeColor){
 				variable.type = "Color";
 				// hex format
-				variable.value = StringFormat("#%04x", m_variable.i);
+				variable.value = StringFormat("Color# %d", m_variable.i);
 			} else if (m_type == TypeStateLabel){
 				variable.type = "StateLabel";
-				variable.value = StringFormat("%d", m_variable.i);
+        auto name = FName((ENamedName)(m_variable.i));
+        variable.value = StringFormat("StateLabel# %d: \'%s\'", m_variable.i, name.GetChars());
 			} else {
 				variable.type = m_type->DescriptiveName();
 				// check if it begins with "Enum"

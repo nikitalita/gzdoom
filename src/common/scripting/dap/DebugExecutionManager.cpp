@@ -79,11 +79,14 @@ namespace DebugServer
 		}
 		
 		if (pauseReason != pauseReason::NONE)
-		{	
+		{
+      // `stack` is thread_local, we're currently on that thread,
+      // and the debugger will be running in a separate thread, so we need to set it here.
+      RuntimeState::m_GlobalVMStack = stack;
 			m_state = DebuggerState::kPaused;
 			m_currentStepStackId = 0;
 			m_currentStepStackFrame = nullptr;
-			RuntimeState::m_GlobalVMStack = stack;
+
 			if (m_session) {
 				m_session->send(dap::StoppedEvent{
 					.reason = pauseReasonStrings[(int)pauseReason],

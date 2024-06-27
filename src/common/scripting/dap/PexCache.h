@@ -10,6 +10,7 @@ namespace Pex{
 	struct Binary{
 		std::string archiveName;
 		std::string scriptName;
+    std::string scriptPath;
 		std::string source;
 		dap::Source sourceData;
 	};
@@ -29,7 +30,9 @@ namespace DebugServer
 		std::shared_ptr<Pex::Binary> GetCachedScript(const int ref);
 
 		std::shared_ptr<Pex::Binary> GetScript(const std::string & scriptName);
-		bool GetDecompiledSource(const std::string & scriptName, std::string& decompiledSource);
+    bool GetDecompiledSourceByRef(int ref, std::string& decompiledSource);
+
+    bool GetDecompiledSource(const std::string & fqpn, std::string& decompiledSource);
 		bool GetSourceData(const std::string &scriptName, dap::Source& data);
 		void Clear();
 	private:

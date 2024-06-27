@@ -66,8 +66,6 @@ namespace DebugServer
 				.source = source,
 				.verified = foundLine
 				};
-			// TODO: remove this hack
-			bpoint_info.source->sourceReference = dap::optional<dap::integer>(NULL);
 			response.breakpoints.push_back(bpoint_info);
 		}
 
