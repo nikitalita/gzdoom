@@ -179,6 +179,7 @@ namespace DebugServer
     case BASIC_name:
       // no need to truncate, they're all 4 byte integers
       new_val.i = val->i;
+      break;
     case BASIC_uint16:
       new_val.i = static_cast<uint16_t>(val->i);
       break;
