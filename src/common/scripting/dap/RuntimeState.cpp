@@ -12,17 +12,16 @@
 #include <memory>
 #include <common/scripting/dap/Nodes/StatePointerNode.h>
 
-
 namespace DebugServer
 {
-	VMFrameStack * RuntimeState::m_GlobalVMStack = nullptr;
+	VMFrameStack *RuntimeState::m_GlobalVMStack = nullptr;
 
-	RuntimeState::RuntimeState(const std::shared_ptr<IdProvider>& idProvider)
+	RuntimeState::RuntimeState(const std::shared_ptr<IdProvider> &idProvider)
 	{
 		m_paths = std::make_unique<IdMap<std::string>>(idProvider);
 	}
 
-	bool RuntimeState::ResolveStateByPath(const std::string requestedPath, std::shared_ptr<StateNodeBase>& node)
+	bool RuntimeState::ResolveStateByPath(const std::string requestedPath, std::shared_ptr<StateNodeBase> &node)
 	{
 		const auto path = ToLowerCopy(requestedPath);
 
@@ -53,8 +52,8 @@ namespace DebugServer
 		std::shared_ptr<StateNodeBase> currentNode = std::make_shared<StackStateNode>(stackId);
 		while (!elements.empty() && currentNode)
 		{
-			auto structured = dynamic_cast<IStructuredState*>(currentNode.get());
-			
+			auto structured = dynamic_cast<IStructuredState *>(currentNode.get());
+
 			if (structured)
 			{
 				std::vector<std::string> childNames;
@@ -72,16 +71,16 @@ namespace DebugServer
 					m_paths->AddOrGetExisting(discoveredPath, addedId);
 				}
 			}
-			
+
 			const auto currentName = elements.at(0);
 			currentPathElements.push_back(currentName);
-		
+
 			if (structured && !structured->GetChildNode(currentName, currentNode))
 			{
 				currentNode = nullptr;
 				break;
 			}
-		
+
 			elements.erase(elements.begin());
 		}
 
@@ -106,7 +105,7 @@ namespace DebugServer
 		return true;
 	}
 
-	bool RuntimeState::ResolveStateById(const uint32_t id, std::shared_ptr<StateNodeBase>& node)
+	bool RuntimeState::ResolveStateById(const uint32_t id, std::shared_ptr<StateNodeBase> &node)
 	{
 		std::string path;
 
@@ -118,7 +117,7 @@ namespace DebugServer
 		return false;
 	}
 
-	bool RuntimeState::ResolveChildrenByParentPath(const std::string requestedPath, std::vector<std::shared_ptr<StateNodeBase>>& nodes)
+	bool RuntimeState::ResolveChildrenByParentPath(const std::string requestedPath, std::vector<std::shared_ptr<StateNodeBase>> &nodes)
 	{
 		std::shared_ptr<StateNodeBase> resolvedParent;
 		if (!ResolveStateByPath(requestedPath, resolvedParent))
@@ -126,7 +125,7 @@ namespace DebugServer
 			return false;
 		}
 
-		auto structured = dynamic_cast<IStructuredState*>(resolvedParent.get());
+		auto structured = dynamic_cast<IStructuredState *>(resolvedParent.get());
 		if (!structured)
 		{
 			return false;
@@ -135,7 +134,7 @@ namespace DebugServer
 		std::vector<std::string> childNames;
 		structured->GetChildNames(childNames);
 
-		for (const auto& childName : childNames)
+		for (const auto &childName : childNames)
 		{
 			std::shared_ptr<StateNodeBase> childNode;
 			if (ResolveStateByPath(StringFormat("%s.%s", requestedPath.c_str(), childName.c_str()), childNode))
@@ -147,7 +146,7 @@ namespace DebugServer
 		return true;
 	}
 
-	bool RuntimeState::ResolveChildrenByParentId(const uint32_t id, std::vector<std::shared_ptr<StateNodeBase>>& nodes)
+	bool RuntimeState::ResolveChildrenByParentId(const uint32_t id, std::vector<std::shared_ptr<StateNodeBase>> &nodes)
 	{
 		std::string path;
 
@@ -159,33 +158,40 @@ namespace DebugServer
 		return false;
 	}
 
-	std::shared_ptr<StateNodeBase> RuntimeState::CreateNodeForVariable(std::string name, VMValue variable, PType* p_type)
+	std::shared_ptr<StateNodeBase> RuntimeState::CreateNodeForVariable(std::string name, VMValue variable, PType *p_type)
 	{
-		if (IsBasicNonPointerType(p_type) || (IsBasicType(p_type) && !p_type->isObjectPointer())){
+		if (IsBasicNonPointerType(p_type) || (IsBasicType(p_type) && !p_type->isObjectPointer()))
+		{
 			return std::make_shared<ValueStateNode>(name, variable, p_type);
 		}
-    if (p_type == TypeState){
-      return std::make_shared<StatePointerNode>(name, variable, dynamic_cast<PStatePointer*>(p_type));
-    }
-		if (p_type->isClass() || p_type->isObjectPointer()){
+		if (p_type == TypeState)
+		{
+			return std::make_shared<StatePointerNode>(name, variable, dynamic_cast<PStatePointer *>(p_type));
+		}
+		if (p_type->isClass() || p_type->isObjectPointer())
+		{
 			return std::make_shared<ObjectStateNode>(name, variable, p_type);
-		} else if (p_type->isStruct() || p_type->isContainer()){
+		}
+		else if (p_type->isStruct() || p_type->isContainer())
+		{
 			return std::make_shared<StructStateNode>(name, variable, p_type);
-		} else if (p_type->isArray() || p_type->isDynArray() || p_type->isStaticArray()){
+		}
+		else if (p_type->isArray() || p_type->isDynArray() || p_type->isStaticArray())
+		{
 			return std::make_shared<ArrayStateNode>(name, variable, p_type);
 		}
 		return nullptr;
 	}
 
-	VMFrameStack * RuntimeState::GetStack(uint32_t stackId)
+	VMFrameStack *RuntimeState::GetStack(uint32_t stackId)
 	{
 		// just one stack!
 		return m_GlobalVMStack;
 	}
 
-	VMFrame* RuntimeState::GetFrame(const uint32_t stackId, const uint32_t level)
+	VMFrame *RuntimeState::GetFrame(const uint32_t stackId, const uint32_t level)
 	{
-		std::vector<VMFrame*> frames;
+		std::vector<VMFrame *> frames;
 		GetStackFrames(stackId, frames);
 
 		if (frames.empty() || level > frames.size() - 1)
@@ -196,11 +202,12 @@ namespace DebugServer
 		return frames.at(level);
 	}
 
-	void RuntimeState::GetStackFrames(VMFrameStack * stack, std::vector<VMFrame*>& frames)
+	void RuntimeState::GetStackFrames(VMFrameStack *stack, std::vector<VMFrame *> &frames)
 	{
-    if (!stack->HasFrames()) {
-      return;
-    }
+		if (!stack->HasFrames())
+		{
+			return;
+		}
 		auto frame = stack->TopFrame();
 
 		while (frame)
@@ -210,7 +217,7 @@ namespace DebugServer
 		}
 	}
 
-	bool RuntimeState::GetStackFrames(const uint32_t stackId, std::vector<VMFrame*>& frames)
+	bool RuntimeState::GetStackFrames(const uint32_t stackId, std::vector<VMFrame *> &frames)
 	{
 		const auto stack = GetStack(stackId);
 		if (!stack)

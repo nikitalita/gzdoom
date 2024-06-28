@@ -5,13 +5,12 @@
 namespace DebugServer
 {
 	// using namespace RE::BSScript::Internal;
-	static const char * pauseReasonStrings[] = {
+	static const char *pauseReasonStrings[] = {
 		"none",
 		"step",
 		"breakpoint",
 		"paused",
-		"exception"
-	};
+		"exception"};
 	void DebugExecutionManager::HandleInstruction(VMFrameStack *stack, VMReturn *ret, int numret, const VMOP *pc)
 	{
 		std::lock_guard<std::mutex> lock(m_instructionMutex);
@@ -20,7 +19,7 @@ namespace DebugServer
 		{
 			return;
 		}
-		
+
 		bool shouldContinue = false;
 		bool shouldSendEvent = false;
 		pauseReason pauseReason = pauseReason::NONE;
@@ -42,20 +41,21 @@ namespace DebugServer
 		{
 			if (m_currentStepStackFrame)
 			{
-				std::vector<VMFrame*> currentFrames;
+				std::vector<VMFrame *> currentFrames;
 				RuntimeState::GetStackFrames(stack, currentFrames);
 
 				if (!currentFrames.empty())
 				{
 					ptrdiff_t stepFrameIndex = -1;
-          if (m_currentVMFunction && m_currentStepStackFrame->Func == m_currentVMFunction) {
-            const auto stepFrameIter = std::find(currentFrames.begin(), currentFrames.end(), m_currentStepStackFrame);
+					if (m_currentVMFunction && m_currentStepStackFrame->Func == m_currentVMFunction)
+					{
+						const auto stepFrameIter = std::find(currentFrames.begin(), currentFrames.end(), m_currentStepStackFrame);
 
-            if (stepFrameIter != currentFrames.end())
-            {
-              stepFrameIndex = std::distance(currentFrames.begin(), stepFrameIter);
-            }
-          }
+						if (stepFrameIter != currentFrames.end())
+						{
+							stepFrameIndex = std::distance(currentFrames.begin(), stepFrameIter);
+						}
+					}
 					switch (m_currentStepType)
 					{
 					case StepType::STEP_IN:
@@ -76,42 +76,46 @@ namespace DebugServer
 						break;
 					}
 				}
-			} else {
-        // no more frames on stack, should continue
-        if (!stack->HasFrames()){
-          shouldContinue = true;
-        }
-      }
+			}
+			else
+			{
+				// no more frames on stack, should continue
+				if (!stack->HasFrames())
+				{
+					shouldContinue = true;
+				}
+			}
 		}
-		
+
 		if (pauseReason != pauseReason::NONE)
 		{
-      // `stack` is thread_local, we're currently on that thread,
-      // and the debugger will be running in a separate thread, so we need to set it here.
-      RuntimeState::m_GlobalVMStack = stack;
+			// `stack` is thread_local, we're currently on that thread,
+			// and the debugger will be running in a separate thread, so we need to set it here.
+			RuntimeState::m_GlobalVMStack = stack;
 			m_state = DebuggerState::kPaused;
 			m_currentStepStackId = 0;
 			m_currentStepStackFrame = nullptr;
-      m_currentVMFunction = nullptr;
+			m_currentVMFunction = nullptr;
 
-			if (m_session) {
+			if (m_session)
+			{
 				m_session->send(dap::StoppedEvent{
 					.reason = pauseReasonStrings[(int)pauseReason],
-					.threadId = 1
-					});
+					.threadId = 1});
 			}
 			// Window::ReleaseFocus();
 		}
-		else if (shouldContinue) {
+		else if (shouldContinue)
+		{
 			m_state = DebuggerState::kRunning;
 			m_currentStepStackId = 0;
 			m_currentStepStackFrame = nullptr;
-      m_currentVMFunction = nullptr;
-			if (m_session) {
+			m_currentVMFunction = nullptr;
+			if (m_session)
+			{
 				m_session->send(dap::ContinuedEvent{
-				.allThreadsContinued = true,
-				.threadId = 1
-					});
+					.allThreadsContinued = true,
+					.threadId = 1});
 			}
 		}
 
@@ -121,15 +125,16 @@ namespace DebugServer
 			std::this_thread::sleep_for(100ms);
 		}
 		// If we were the thread that paused, regain focus
-		if (pauseReason != pauseReason::NONE) {
+		if (pauseReason != pauseReason::NONE)
+		{
 			// Window::RegainFocus();
 			// also reset the state
 			m_runtimeState->Reset();
-      if (m_state != DebuggerState::kRunning){
-        RuntimeState::m_GlobalVMStack = stack;
-      }
+			if (m_state != DebuggerState::kRunning)
+			{
+				RuntimeState::m_GlobalVMStack = stack;
+			}
 		}
-
 	}
 
 	void DebugExecutionManager::Open(std::shared_ptr<dap::Session> ses)
@@ -141,13 +146,13 @@ namespace DebugServer
 
 	void DebugExecutionManager::Close()
 	{
-    // Set m_closed to true to allow HandleInstruction to wake up.
+		// Set m_closed to true to allow HandleInstruction to wake up.
 		m_closed = true;
-    // Lock the mutex so we wait until the HandleInstruction thread is done.
+		// Lock the mutex so we wait until the HandleInstruction thread is done.
 
 		std::lock_guard<std::mutex> lock(m_instructionMutex);
-    m_state = DebuggerState::kRunning;
-    // Now it should be safe to end the session.
+		m_state = DebuggerState::kRunning;
+		// Now it should be safe to end the session.
 		m_session = nullptr;
 	}
 
@@ -172,7 +177,8 @@ namespace DebugServer
 
 	bool DebugExecutionManager::Step(uint32_t stackId, const StepType stepType)
 	{
-		if (stackId < 0) {
+		if (stackId < 0)
+		{
 			return false;
 		}
 
@@ -184,12 +190,14 @@ namespace DebugServer
 		const auto stack = RuntimeState::GetStack(stackId);
 		if (stack)
 		{
-      if (stack->HasFrames()) {
-        m_currentStepStackFrame = stack->TopFrame();
-        if (m_currentStepStackFrame) {
-          m_currentVMFunction = m_currentStepStackFrame->Func;
-        }
-      }
+			if (stack->HasFrames())
+			{
+				m_currentStepStackFrame = stack->TopFrame();
+				if (m_currentStepStackFrame)
+				{
+					m_currentVMFunction = m_currentStepStackFrame->Func;
+				}
+			}
 		}
 		else
 		{

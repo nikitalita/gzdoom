@@ -11,4 +11,3 @@ namespace DebugServer
 		m_id = id;
 	}
 }
-

@@ -5,7 +5,7 @@
 
 namespace DebugServer
 {
-	template<typename T>
+	template <typename T>
 	class IdMap
 	{
 		std::shared_ptr<IdProvider> m_idProvider;
@@ -13,9 +13,9 @@ namespace DebugServer
 		std::unordered_map<T, uint32_t> m_elementsToIds;
 
 		std::recursive_mutex m_elementsMutex;
+
 	public:
-		explicit IdMap(const std::shared_ptr<IdProvider> idProvider) :
-			m_idProvider(idProvider)
+		explicit IdMap(const std::shared_ptr<IdProvider> idProvider) : m_idProvider(idProvider)
 		{
 		}
 
@@ -24,7 +24,7 @@ namespace DebugServer
 			Clear();
 		}
 
-		bool Get(uint32_t id, T& value)
+		bool Get(uint32_t id, T &value)
 		{
 			std::lock_guard<std::recursive_mutex> lock(m_elementsMutex);
 
@@ -38,7 +38,7 @@ namespace DebugServer
 			return false;
 		}
 
-		bool GetId(T element, uint32_t& id)
+		bool GetId(T element, uint32_t &id)
 		{
 			std::lock_guard<std::recursive_mutex> lock(m_elementsMutex);
 
@@ -52,7 +52,7 @@ namespace DebugServer
 			return false;
 		}
 
-		bool AddOrGetExisting(T element, uint32_t& id)
+		bool AddOrGetExisting(T element, uint32_t &id)
 		{
 			std::lock_guard<std::recursive_mutex> lock(m_elementsMutex);
 
@@ -106,4 +106,3 @@ namespace DebugServer
 	};
 
 }
-
