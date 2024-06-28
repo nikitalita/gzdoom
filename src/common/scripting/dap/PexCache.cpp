@@ -23,11 +23,20 @@ namespace DebugServer
 		const auto entry = m_scripts.find(ref);
 		return entry != m_scripts.end() ? entry->second : nullptr;
 	}
+  std::shared_ptr<Pex::Binary> PexCache::GetScript(const dap::Source& source)
+  {
+    auto binary = GetCachedScript(GetSourceReference(source));
+    if (binary)
+    {
+      return binary;
+    }
+    return GetScript((source.origin.has_value() ? source.origin.value() + ":" : "") + source.path.value(""));
+  }
 
-	std::shared_ptr<Pex::Binary> PexCache::GetScript(const std::string& scriptName)
+	std::shared_ptr<Pex::Binary> PexCache::GetScript(const std::string& fqsn)
 	{
 		std::lock_guard<std::mutex> scriptLock(m_scriptsMutex);
-		uint32_t reference = GetScriptReference(scriptName);
+		uint32_t reference = GetScriptReference(fqsn);
 
 		const auto entry = m_scripts.find(reference);
 		if (entry != m_scripts.end()) {
@@ -35,13 +44,13 @@ namespace DebugServer
     }
     auto binary = std::make_shared<Pex::Binary>();
     // scriptName without the leading <ProjectArchive.pk3>: part
-    auto colonPos = scriptName.find(':');
-    auto truncScriptPath = scriptName;
+    auto colonPos = fqsn.find(':');
+    auto truncScriptPath = fqsn;
     std::string archiveName = "";
     if (colonPos != std::string::npos)
     {
-      truncScriptPath = scriptName.substr(colonPos + 1);
-      archiveName = scriptName.substr(0, colonPos);
+      truncScriptPath = fqsn.substr(colonPos + 1);
+      archiveName = fqsn.substr(0, colonPos);
     }
 
     int lump = fileSystem.FindFile(truncScriptPath.c_str());
@@ -65,8 +74,6 @@ namespace DebugServer
     // 	m_scripts.emplace(reference, binary);
     // 	return binary;
     // }
-
-
 		return nullptr;
 	}
   bool PexCache::GetDecompiledSourceByRef(int ref, std::string& decompiledSource)
@@ -88,24 +95,41 @@ namespace DebugServer
     return true;
   }
 
+
+  inline bool GetSource(const std::string& scriptPath, std::string& decompiledSource)
+  {
+    auto lump = fileSystem.FindFile(scriptPath.c_str());
+    if (lump == -1)
+    {
+      return false;
+    }
+    auto size = fileSystem.FileLength(lump);
+
+    std::vector<uint8_t> buffer(size);
+    // Godspeed, you magnificent bastard
+    fileSystem.ReadFile(lump, buffer.data());
+    decompiledSource = std::string(buffer.begin(), buffer.end());
+    return true;
+  }
+
+  bool PexCache::GetDecompiledSource(const dap::Source& source, std::string& decompiledSource)
+  {
+    auto binary = GetCachedScript(GetSourceReference(source));
+    if (!binary) {
+      return GetDecompiledSource((source.origin.has_value() ? source.origin.value() + ":" : "") + source.path.value(""),
+                                 decompiledSource);
+    }
+    return GetSource(binary->scriptPath, decompiledSource);
+  }
 	bool PexCache::GetDecompiledSource(const std::string& fqpn, std::string& decompiledSource)
 	{
-		 const auto binary = this->GetScript(fqpn);
-		 if (!binary)
-		 {
+		const auto binary = this->GetScript(fqpn);
+		if (!binary)
+		{
 		 	return false;
-		 }
-     auto lump = fileSystem.FindFile(binary->scriptPath.c_str());
-      if (lump == -1)
-      {
-        return false;
-      }
-      auto size = fileSystem.FileLength(lump);
-      decompiledSource.reserve(size);
-      // Godspeed, you magnificent bastard
-      fileSystem.ReadFile(lump, decompiledSource.data());
-      return true;
-	}
+		}
+    return GetSource(binary->scriptPath, decompiledSource);
+  }
 
 	bool PexCache::GetSourceData(const std::string& scriptName, dap::Source& data)
 	{

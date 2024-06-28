@@ -30,7 +30,7 @@ namespace DebugServer
 		{
 			pauseReason = pauseReason::paused;
 		}
-		else if (m_state != DebuggerState::kPaused && m_breakpointManager->GetExecutionIsAtValidBreakpoint(stack, ret, numret, pc))
+		else if (m_breakpointManager->GetExecutionIsAtValidBreakpoint(stack, ret, numret, pc))
 		{
 			pauseReason = pauseReason::breakpoint;
 		}
@@ -75,7 +75,12 @@ namespace DebugServer
 						break;
 					}
 				}
-			}
+			} else {
+        // no more frames on stack, should continue
+        if (stack->TopFrame() == nullptr){
+          shouldContinue = true;
+        }
+      }
 		}
 		
 		if (pauseReason != pauseReason::NONE)
@@ -117,6 +122,9 @@ namespace DebugServer
 			// Window::RegainFocus();
 			// also reset the state
 			m_runtimeState->Reset();
+      if (m_state != DebuggerState::kRunning){
+        RuntimeState::m_GlobalVMStack = stack;
+      }
 		}
 
 	}
@@ -130,8 +138,11 @@ namespace DebugServer
 
 	void DebugExecutionManager::Close()
 	{
+    // Set m_closed to true to allow HandleInstruction to wake up.
 		m_closed = true;
+    // Lock the mutex so we wait until the HandleInstruction thread is done.
 		std::lock_guard<std::mutex> lock(m_instructionMutex);
+    // Now it should be safe to end the session.
 		m_session = nullptr;
 	}
 

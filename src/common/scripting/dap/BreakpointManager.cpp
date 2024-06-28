@@ -20,18 +20,17 @@ namespace DebugServer
 	{
 		dap::SetBreakpointsResponse response;
 		std::set<int> breakpointLines;
-		auto scriptName = source.name.value("");
-		// auto binary = m_pexCache->GetScript(scriptName.c_str());
-		// if (!binary) {
-		// 	// RETURN_DAP_ERROR(fmt::format("SetBreakpoints: Could not find PEX data for script {}", scriptName.c_str()));
-		// }
-		auto ref = GetSourceReference(source);
-		// bool hasDebugInfo = binary->getDebugInfo().getFunctionInfos().size() > 0;
-		bool hasDebugInfo = true;
-		if (!hasDebugInfo) {
+		auto scriptPath = source.name.value("");
+    auto binary = m_pexCache->GetScript(source);
+    if (!binary) {
+      RETURN_DAP_ERROR(StringFormat("SetBreakpoints: Could not find script %s in loaded sources!", scriptPath.c_str()).c_str());
+    }
+    // TODO: need to somehow get all the VMFunctions for a given script; right now, we just say that all breakpoints are valid if the script is loaded.
+    bool hasDebugInfo = true;
+//		if (!hasDebugInfo) {
 			// RETURN_DAP_ERROR(fmt::format("SetBreakpoints: No debug data for script {}. Ensure that `bLoadDebugInformation=1` is set under `[ZScript]` in {}", scriptName, iniName));
-		}
-
+//		}
+    auto ref = GetSourceReference(source);
 		ScriptBreakpoints info {
 		   .ref = ref,
 		   .source = source,
@@ -108,7 +107,7 @@ namespace DebugServer
 
 	bool BreakpointManager::GetExecutionIsAtValidBreakpoint(VMFrameStack *stack, VMReturn *ret, int numret, const VMOP *pc)
 	{
-		if (IsFunctionNative(stack->TopFrame()->Func))
+		if (m_breakpoints.empty() || IsFunctionNative(stack->TopFrame()->Func))
 		{
 			return false;
 		}
@@ -116,84 +115,54 @@ namespace DebugServer
 		auto scriptName = scriptFunction->SourceFileName.GetChars();
 		const auto sourceReference = GetScriptReference(scriptName);
 
-		if (m_breakpoints.find(sourceReference) != m_breakpoints.end())
-		{
-			auto& scriptBreakpoints = m_breakpoints[sourceReference];
-			if (!scriptBreakpoints.breakpoints.empty())
-			{
-				int lineNo = -1;
-				auto ip = pc;
-				lineNo = scriptFunction->PCToLine(pc);
-				if (lineNo != -1 && scriptBreakpoints.breakpoints.find(lineNo) != scriptBreakpoints.breakpoints.end()) {
-					// we found a match, now check if we should pause
-					uint32_t PCIndex = int(pc - scriptFunction->Code);
-					//special handling for the first
-					if (scriptFunction->LineInfo[0].LineNumber == lineNo){
-						if (!m_last_seen || m_last_seen != &scriptBreakpoints.breakpoints[lineNo]){
-							// wait for `self` to be loaded
-							m_last_seen = &scriptBreakpoints.breakpoints[lineNo];
-							times_seen = 1;
-							return false;
-						} else if (times_seen == 1){
-							times_seen += 1;
-							// wait for `invoker` to be loaded
-							if (IsFunctionInvoked(scriptFunction)){
-								return false;
-							}
-							return true;
-						} else if (times_seen == 2 && IsFunctionInvoked(scriptFunction)){
-							times_seen += 1;
-							return true;
-						}
-					} else {
-						if (!m_last_seen || m_last_seen != &scriptBreakpoints.breakpoints[lineNo]){
-							m_last_seen = &scriptBreakpoints.breakpoints[lineNo];
-							times_seen = 1;
-							return true;
-						} 
-					}
-					// seen it before, don't break again
-					times_seen += 1;
-					return false;
-				}
-				m_last_seen = nullptr;
-				times_seen = 0;
-				return false;
-			}
-		}
+		if (m_breakpoints.find(sourceReference) == m_breakpoints.end()) {
+      return false;
+    }
 
-		// auto &_func = tasklet->topFrame->owningFunction;
-		// if (!_func || _func->GetIsNative())
-		// {
-		// 	return false;
-		// }
-		// // only ScriptFunctions are non-native
-		// auto func = static_cast<RE::BSScript::Internal::ScriptFunction*>(_func.get());
-		// const auto sourceReference = GetScriptReference(tasklet->topFrame->owningObjectType->GetName());
-		
-		// if (m_breakpoints.find(sourceReference) != m_breakpoints.end())
-		// {
-		// 	auto& scriptBreakpoints = m_breakpoints[sourceReference];
+    auto& scriptBreakpoints = m_breakpoints[sourceReference];
 
-		// 	auto binary = m_pexCache->GetCachedScript(sourceReference);
-		// 	if (!binary || binary->getDebugInfo().getModificationTime() != scriptBreakpoints.modificationTime) {
-		// 		// script was reloaded or removed after placement, remove it
-		// 		InvalidateAllBreakpointsForScript(sourceReference);
-		// 		return false;
-		// 	}
-		// 	if (!scriptBreakpoints.breakpoints.empty())
-		// 	{
-		// 		int currentInstruction = -1;
-		// 		auto ip = tasklet->topFrame->STACK_FRAME_IP;
-		// 		currentInstruction = GetInstructionNumberForOffset(&func->instructions, ip);
-		// 		if (currentInstruction != -1 && scriptBreakpoints.breakpoints.find(currentInstruction) != scriptBreakpoints.breakpoints.end()) {
-		// 			return true;
-		// 		}
-		// 		return false;
-		// 	}
-		// }
+    if (scriptBreakpoints.breakpoints.empty()) {
+      return false;
+    }
 
-		return false;
+    int lineNo = -1;
+    auto ip = pc;
+    lineNo = scriptFunction->PCToLine(pc);
+    if (lineNo != -1 && scriptBreakpoints.breakpoints.find(lineNo) != scriptBreakpoints.breakpoints.end()) {
+      // we found a match, now check if we should pause
+      uint32_t PCIndex = int(pc - scriptFunction->Code);
+      //special handling for the first
+      if (scriptFunction->LineInfo[0].LineNumber == lineNo){
+        if (!m_last_seen || m_last_seen != &scriptBreakpoints.breakpoints[lineNo]){
+          // wait for `self` to be loaded
+          m_last_seen = &scriptBreakpoints.breakpoints[lineNo];
+          times_seen = 1;
+          return false;
+        } else if (times_seen == 1){
+          times_seen += 1;
+          // wait for `invoker` to be loaded
+          if (IsFunctionInvoked(scriptFunction)){
+            return false;
+          }
+          return true;
+        } else if (times_seen == 2 && IsFunctionInvoked(scriptFunction)){
+          times_seen += 1;
+          return true;
+        }
+      } else {
+        if (!m_last_seen || m_last_seen != &scriptBreakpoints.breakpoints[lineNo]){
+          m_last_seen = &scriptBreakpoints.breakpoints[lineNo];
+          times_seen = 1;
+          return true;
+        }
+      }
+      // seen it before, don't break again
+      times_seen += 1;
+      return false;
+    }
+    m_last_seen = nullptr;
+    times_seen = 0;
+    return false;
 	}
 
 	// //TODO: WIP
