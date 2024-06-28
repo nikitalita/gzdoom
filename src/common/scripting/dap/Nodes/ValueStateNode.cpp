@@ -80,10 +80,10 @@ namespace DebugServer
 					// TODO: fix this
 					auto val = DerefValue(&m_variable, GetBasicType(pointedType));
 					auto deref_var = ToVariable(&val, pointedType);
-					variable.value = StringFormat("0x%08x {%s}", (uint64_t)(m_variable.a), deref_var.value.c_str());
+					variable.value = StringFormat("%p {%s}", (m_variable.a), deref_var.value.c_str());
         } else {
           // just display the address
-          variable.value = StringFormat("0x%08x", (uint64_t) (m_variable.a));
+          variable.value = StringFormat("%p", (m_variable.a));
         }
       }
 		} else if (m_type->isInt()){ // explicitly not TYPE_IntNotInt

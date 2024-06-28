@@ -198,6 +198,9 @@ namespace DebugServer
 
 	void RuntimeState::GetStackFrames(VMFrameStack * stack, std::vector<VMFrame*>& frames)
 	{
+    if (!stack->HasFrames()) {
+      return;
+    }
 		auto frame = stack->TopFrame();
 
 		while (frame)

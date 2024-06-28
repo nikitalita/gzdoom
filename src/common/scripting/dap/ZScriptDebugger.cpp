@@ -148,6 +148,9 @@ namespace DebugServer
 		m_session->registerHandler([this](const dap::LoadedSourcesRequest& request) {
 			return GetLoadedSources(request);
 		});
+    m_session->registerHandler([this](const dap::DisassembleRequest &request) {
+      return Disassemble(request);
+    });
 	}
 
 	dap::Error ZScriptDebugger::Error(const std::string &msg)
@@ -277,6 +280,12 @@ namespace DebugServer
     response.supportsConfigurationDoneRequest = true;
     response.supportsLoadedSourcesRequest = true;
     response.supportedChecksumAlgorithms = { "CRC32" };
+#if !defined(_WIN32) && !defined(_WIN64)
+    //TODO: remove this when disassemble is supported on windows
+    response.supportsDisassembleRequest = true;
+    response.supportsSteppingGranularity = true;
+    response.supportsFunctionBreakpoints = true;
+#endif
     return response;
 	}
 
@@ -392,7 +401,8 @@ namespace DebugServer
 
 	dap::ResponseOrError<dap::SetFunctionBreakpointsResponse> ZScriptDebugger::SetFunctionBreakpoints(const dap::SetFunctionBreakpointsRequest& request)
 	{
-		RETURN_DAP_ERROR("unimplemented");
+//		RETURN_DAP_ERROR("unimplemented");
+    return dap::SetFunctionBreakpointsResponse();
 	}
 	dap::ResponseOrError<dap::StackTraceResponse> ZScriptDebugger::GetStackTrace(const dap::StackTraceRequest& request)
 	{
@@ -564,4 +574,174 @@ namespace DebugServer
 		}
 		return response;
 	}
+
+dap::ResponseOrError<dap::DisassembleResponse> ZScriptDebugger::Disassemble(const dap::DisassembleRequest &request) {
+
+#if defined(_WIN32) || defined(_WIN64)
+    // TODO: add a windows-compatible fmemopen
+    RETURN_DAP_ERROR("Disassemble not supported on Windows");
+#else
+  auto ref = request.memoryReference;
+  // ref is in the format "0x12345678", we need to convert it to a number
+  if (ref.size() < 3 || ref[0] != '0' || ref[1] != 'x') {
+    RETURN_DAP_ERROR("Invalid memoryReference");
+  }
+  uint64_t address = std::stoull(ref.substr(2), nullptr, 16);
+  const int64_t offset = request.instructionOffset.value(0);
+  const uint64_t instructionCount = request.instructionCount;
+
+  auto frames = std::vector<VMFrame*>();
+  RuntimeState::GetStackFrames(RuntimeState::GetStack(1), frames);
+  if (frames.empty()) {
+    RETURN_DAP_ERROR("No stack frames");
+  }
+  VMFrame * foundFrame = nullptr;
+  for (auto candFrame : frames) {
+    if (candFrame->PC && (uint64_t) candFrame->PC == address) {
+      foundFrame = candFrame;
+        break;
+    }
+  }
+  if (!foundFrame){
+    RETURN_DAP_ERROR("Could not find frame");
+  }
+
+  // get the function and disassemble it
+  if (!foundFrame->Func) {
+    RETURN_DAP_ERROR("No function in frame");
+  }
+  if (IsFunctionNative(foundFrame->Func)) {
+    RETURN_DAP_ERROR("Cannot disassemble native function");
+  }
+  VMScriptFunction *func = static_cast<VMScriptFunction*>(foundFrame->Func);
+  if (!func) {
+    RETURN_DAP_ERROR("No function in frame");
+  }
+  auto Code = func->Code;
+
+  if (!Code){
+    RETURN_DAP_ERROR("No code in function");
+  }
+  auto response = dap::DisassembleResponse();
+  response.instructions.reserve(instructionCount);
+
+  uint64_t actualCount = instructionCount;
+  auto currCodePointer = foundFrame->PC;
+  // adjust the code pointer by the offset
+  currCodePointer += offset;
+
+  // the Disassemble request expects the EXACT number of instructions requested, so we need to fill in the gaps with "<INVALID>"
+  auto add_invalid_inst_to_response = [&] (size_t count) {
+    for (size_t i = 0; i < count; i++) {
+      auto instruction = dap::DisassembledInstruction();
+      instruction.instruction = "<INVALID>";
+      instruction.address = StringFormat("%p", currCodePointer);
+      response.instructions.push_back(instruction);
+      currCodePointer++;
+    }
+  };
+  // now check to see if we've gone too far forward or back
+  if (currCodePointer < Code){
+
+    size_t diff = int(Code - currCodePointer);
+    if (diff > instructionCount){
+      diff = instructionCount;
+    }
+    // populate the response instructions with "<INVALID>" for the instructions that are before the start of the function
+    add_invalid_inst_to_response(diff);
+    actualCount = instructionCount - diff < 0 ? 0 : instructionCount - diff;
+    if (actualCount == 0){
+      return response;
+    }
+  } else if (currCodePointer > Code + func->CodeSize){
+    add_invalid_inst_to_response(instructionCount);
+    return response;
+  }
+  int diff = int(currCodePointer - Code);
+  int truncatedCodeSize = func->CodeSize - diff;
+  if (actualCount > truncatedCodeSize){
+    actualCount = truncatedCodeSize;
+  }
+  // we need to create a temporary FILE* to pass to Disassemble
+  // we can't use a string because Disassemble expects a FILE*
+  // assume 256 bytes per instruction
+  size_t buf_size = func->CodeSize * 256;
+  std::vector<uint8_t> buffer(buf_size);
+  FILE *f = fmemopen(buffer.data(), buf_size, "w");
+  if (!f) {
+    RETURN_DAP_ERROR("Could not create temporary file");
+  }
+  VMDisasm(f, currCodePointer, (int)truncatedCodeSize, func, (uint64_t)currCodePointer);
+  // close the file
+  fclose(f);
+  // now we can read the disassembled code from CodeBytes
+  std::string disassembly = std::string(buffer.begin(), std::find(buffer.begin(), buffer.end(),0));
+  // split it into lines
+  auto lines = Split(disassembly, "\n");
+  int i = 0;
+  dap::optional<dap::Source> location;
+  dap::Source source;
+  if (m_pexCache->GetSourceData(func->SourceFileName.GetChars(), source)){
+    location = source;
+  }
+  for (size_t i = 0; i < lines.size(); i++) {
+    auto &line = lines[i];
+    if (i >= actualCount){
+      break;
+    }
+    if (line.empty()){
+      continue;
+    }
+    if (line.size() < 19){
+      LogError("!!!!!!Disassembly line %d too short!!!!!", i);
+      continue;
+    }
+    // lines go like this:
+    // ip        opcode   op      arg1, arg2, arg3             ;arg1,arg2,arg3 {[resolved symbol]}(optional)
+    // 00000464: 611e0201 call    [0x1319fc620],2,1            ;30,2,1  [ZTBotController.PickTeam]
+    //
+    // we want to extract the ip, the opcode, and the op
+    // we also want to remove the ip and the opcode from the line
+    auto col_pos = line.find(':');
+    auto ip = line.substr(0, col_pos);
+    auto opcode = line.substr(col_pos+2, 8);
+    auto op = line.substr(col_pos+11, 8);
+    op.erase(std::remove(op.begin(), op.end(), ' '), op.end());
+    line = line.substr(col_pos+11); // remove the ip and the opcode
+    auto comment_pos = line.find(';');
+    std::string comment;
+    if (comment_pos != std::string::npos) {
+      comment = line.substr(comment_pos + 1);
+    }
+    // get the resolved_symbol if it exists
+    std::string resolved_symbol;
+    if (!comment.empty()) {
+      // find the first open bracket in the comment
+      auto open_bracket = comment.find('[');
+      if (open_bracket != std::string::npos) {
+        // find the last close bracket
+        auto close_bracket = comment.find_last_of(']');
+        if (close_bracket != std::string::npos) {
+          resolved_symbol = comment.substr(open_bracket + 1, close_bracket - open_bracket - 1);
+        }
+      }
+    }
+    auto instruction = dap::DisassembledInstruction();
+    instruction.instruction = line;
+    instruction.address = "0x" + ip;
+    instruction.column = 1;
+    instruction.line = func->PCToLine(currCodePointer);
+    instruction.instructionBytes = opcode;
+    instruction.location = location;
+    if (!resolved_symbol.empty()) {
+      instruction.symbol = resolved_symbol;
+    }
+    response.instructions.push_back(instruction);
+    currCodePointer++;
+  }
+  add_invalid_inst_to_response(instructionCount - response.instructions.size());
+
+  return response;
+#endif
 }
+}// namespace DebugServer

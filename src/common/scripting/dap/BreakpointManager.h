@@ -35,6 +35,7 @@ namespace DebugServer
 		}
 
 		dap::ResponseOrError<dap::SetBreakpointsResponse> SetBreakpoints(const dap::Source& src, const std::vector<dap::SourceBreakpoint>& srcBreakpoints);
+//    dap::ResponseOrError<dap::SetFunctionBreakpointsRequest> SetFunctionBreakpoints(const std::vector<dap::FunctionBreakpoint>& breakpoints);
 		void ClearBreakpoints(bool emitChanged = false);
 		// bool CheckIfFunctionWillWaitOrExit(RE::BSScript::Internal::CodeTasklet* tasklet);
 		void InvalidateAllBreakpointsForScript(int ref);
