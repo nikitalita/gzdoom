@@ -94,6 +94,7 @@ namespace DebugServer
 		std::string m_projectPath;
 		std::string m_projectArchive;
 		std::mutex m_instructionMutex;
+    dap::InitializeRequest m_clientCaps;
 
 		RuntimeEvents::CreateStackEventHandle m_createStackEventHandle;
 		RuntimeEvents::CleanupStackEventHandle m_cleanupStackEventHandle;

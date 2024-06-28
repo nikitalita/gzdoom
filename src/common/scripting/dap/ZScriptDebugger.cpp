@@ -80,11 +80,8 @@ namespace DebugServer
 	void ZScriptDebugger::RegisterSessionHandlers() {
 		// The Initialize request is the first message sent from the client and the response reports debugger capabilities.
 		// https://microsoft.github.io/debug-adapter-protocol/specification#Requests_Initialize
-		m_session->registerHandler([](const dap::InitializeRequest& request) {
-			dap::InitializeResponse response;
-			response.supportsConfigurationDoneRequest = true;
-			response.supportsLoadedSourcesRequest = true;
-			return response;
+		m_session->registerHandler([this](const dap::InitializeRequest& request) {
+			return Initialize(request);
 		});
 		m_session->onError([this](const char* msg) {
 			Printf("%s", msg);
@@ -275,7 +272,12 @@ namespace DebugServer
 	
 	dap::ResponseOrError<dap::InitializeResponse> ZScriptDebugger::Initialize(const dap::InitializeRequest& request)
 	{
-		return dap::ResponseOrError<dap::InitializeResponse>();
+    m_clientCaps = request;
+    dap::InitializeResponse response;
+    response.supportsConfigurationDoneRequest = true;
+    response.supportsLoadedSourcesRequest = true;
+    response.supportedChecksumAlgorithms = { "CRC32" };
+    return response;
 	}
 
 	dap::ResponseOrError<dap::LaunchResponse> ZScriptDebugger::Launch(const dap::PDSLaunchRequest& request)
@@ -544,9 +546,14 @@ namespace DebugServer
 		{
 			dap::Source source;
 			std::string path = fileSystem.GetFileFullPath(lump).c_str();
+      int len = fileSystem.FileLength(lump);
 			if (m_pexCache->GetSourceData(path, source))
 			{
 				auto ref = GetSourceReference(source);
+        uint32_t hash = fileSystem.FileHash(lump);
+        if (hash > 0) {
+          source.checksums = {{"CRC32", std::to_string(hash)}};
+        }
 				// TODO: Get the modified times from the unlinked objects?
 				if (m_projectSources.find(ref) != m_projectSources.end()) {
 					response.sources.push_back(m_projectSources[ref]);
