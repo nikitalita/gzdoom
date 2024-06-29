@@ -35,32 +35,70 @@ BreakpointManager::SetBreakpoints(const dap::Source &source, const dap::SetBreak
           .source = source,
           .modificationTime = 0};
   std::map<int, BreakpointInfo> foundBreakpoints;
-
+	auto addInvalidBreakpoint = [&](int line){
+		auto breakpointId = GetBreakpointID(ref, line);
+		response.breakpoints.push_back(dap::Breakpoint{
+				.id = breakpointId,
+				.line = line,
+				.source = source,
+				.verified = false
+		});
+	};
   for (const auto &srcBreakpoint: srcBreakpoints) {
     auto foundLine = true;
     int line = static_cast<int>(srcBreakpoint.line);
     int instructionNum = -1;
     int foundFunctionInfoIndex{-1};
     int64_t breakpointId = -1;
+		auto found = binary->functionLineMap.find_ranges(line);
+		if (found.size() > 1){
+			LogError("Multiple functions found for line %d in script %s!?!?!??!?!?!??!?!?!??!!??!?!?!?!?", line, scriptPath.c_str());
+			addInvalidBreakpoint(line);
+			continue;
+		}
+		else if (found.size() == 0){
+			addInvalidBreakpoint(line);
+			continue;
+		}
+		auto func = found.top()->mapped();
+		auto funcName = func->QualifiedName;
+		if (func == nullptr || IsFunctionAbstract(func)|| func->LineInfoCount == 0) {
+			LogError("No function found for line %d in script %s", line, scriptPath.c_str());
+			addInvalidBreakpoint(line);
+			continue;
+		}
+		for (int i = 0; i < func->LineInfoCount; i++) {
+			if (func->LineInfo[i].LineNumber == line) {
+				instructionNum = func->LineInfo[i].InstructionIndex;
+				foundFunctionInfoIndex = i;
+				break;
+			}
+		}
+		if (instructionNum == -1) {
+			LogError("No instruction found for line %d in script %s?!?!?!?!?!?!?!", line, scriptPath.c_str());
+			addInvalidBreakpoint(line);
+			continue;
+		}
+
+
     breakpointId = GetBreakpointID(ref, line);
 
-    if (foundLine) {
-      auto bpoint = BreakpointInfo{
-              .breakpointId = breakpointId,
-              .instructionNum = instructionNum,
-              .lineNum = line,
-              .debugFuncInfoIndex = foundFunctionInfoIndex,
-              .isNative = false
-      };
-      info.breakpoints[line] = bpoint;
-    }
+		auto bpoint = BreakpointInfo{
+						.breakpointId = breakpointId,
+						.instructionNum = instructionNum,
+						.lineNum = line,
+						.debugFuncInfoIndex = foundFunctionInfoIndex,
+						.isNative = false
+		};
+		void *instrRef = func->Code + instructionNum;
+		info.breakpoints[line] = bpoint;
     auto bpoint_info = dap::Breakpoint{
-            .id = foundLine ? dap::integer(breakpointId) : dap::optional<dap::integer>(),
-            // .instructionReference = foundLine ? GetInstructionReference(debugfinfo) : dap::optional<dap::string>(),
+            .id =  dap::integer(breakpointId),
+            .instructionReference = StringFormat("%p", instrRef),
             .line = dap::integer(line),
-            // .offset = foundLine ? dap::integer(instructionNum) : dap::optional<dap::integer>(),
+//             .offset = foundLine ? dap::integer(instructionNum) : dap::optional<dap::integer>(),
             .source = source,
-            .verified = foundLine};
+            .verified = true};
     response.breakpoints.push_back(bpoint_info);
   }
 

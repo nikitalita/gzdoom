@@ -54,10 +54,42 @@ namespace DebugServer
     return func && func->VarFlags & VARF_Native;
   }
 
+	static inline bool IsFunctionAbstract(VMFunction *func)
+	{
+		return func && func->VarFlags & VARF_Abstract;
+	}
+
   static inline std::string GetIPRef(const char *qualifiedName, uint32_t PCdiff, const VMOP *PC)
   {
     return StringFormat("%s+%04x:%p", qualifiedName, PCdiff, PC);
   }
+
+	static inline std::string GetScriptPathNoQual(const std::string &scriptPath){
+		auto colonPos = scriptPath.find(':');
+		if (colonPos == std::string::npos)
+		{
+			return scriptPath;
+		}
+		return scriptPath.substr(colonPos + 1);
+	}
+
+	static inline std::string GetScriptWithQual(const std::string &scriptPath, const std::string &container){
+		return container + ":" + GetScriptPathNoQual(scriptPath);
+	}
+
+static inline bool isScriptPath(const std::string &path){
+		if (path.empty()){
+			return false;
+		}
+		std::string scriptName = ToLowerCopy(path.substr(path.find_last_of('/\\') + 1));
+		auto ext = scriptName.substr(scriptName.find_last_of('.') + 1);
+		if (!(ext == "zs" || ext == "zsc" || ext == "zc" || ext == "acs" || ext == "dec" ||
+					(scriptName == "DECORATE") ||
+					(scriptName == "ACS"))) {
+			return false;
+		}
+		return true;
+	}
 
   static inline std::string GetIPRefFromFrame(VMFrame *m_stackFrame)
   {

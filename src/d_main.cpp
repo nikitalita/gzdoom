@@ -3434,7 +3434,10 @@ static int D_InitGame(const FIWADInfo* iwad_info, std::vector<std::string>& allw
 
 
 	// clean up the compiler symbols which are not needed any longer.
-	RemoveUnusedSymbols();
+  // TODO: Debugger: Make this configurable!!
+  bool debuggerEnabled = true;
+  if (!debuggerEnabled)
+	  RemoveUnusedSymbols();
 
 	InitActorNumsFromMapinfo();
 	InitSpawnablesFromMapinfo();
