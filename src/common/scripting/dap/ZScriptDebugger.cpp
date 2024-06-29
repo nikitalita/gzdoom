@@ -272,11 +272,11 @@ namespace DebugServer
 		response.supportsConfigurationDoneRequest = true;
 		response.supportsLoadedSourcesRequest = true;
 		response.supportedChecksumAlgorithms = {"CRC32"};
+    response.supportsFunctionBreakpoints = true;
 #if !defined(_WIN32) && !defined(_WIN64)
 		// TODO: remove this when disassemble is supported on windows
 		response.supportsDisassembleRequest = true;
 		response.supportsSteppingGranularity = true;
-		response.supportsFunctionBreakpoints = true;
 #endif
 		return response;
 	}
@@ -390,14 +390,13 @@ namespace DebugServer
 			// So we set sourceReference to make the debugger request the source from us
 			source.sourceReference = ref;
 		}
-		return m_breakpointManager->SetBreakpoints(source, request.breakpoints.value(std::vector<dap::SourceBreakpoint>()));
+		return m_breakpointManager->SetBreakpoints(source, request);
 		;
 	}
 
 	dap::ResponseOrError<dap::SetFunctionBreakpointsResponse> ZScriptDebugger::SetFunctionBreakpoints(const dap::SetFunctionBreakpointsRequest &request)
 	{
-		//		RETURN_DAP_ERROR("unimplemented");
-		return dap::SetFunctionBreakpointsResponse();
+		return m_breakpointManager->SetFunctionBreakpoints(request);
 	}
 	dap::ResponseOrError<dap::StackTraceResponse> ZScriptDebugger::GetStackTrace(const dap::StackTraceRequest &request)
 	{

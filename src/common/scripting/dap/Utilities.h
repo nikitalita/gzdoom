@@ -6,6 +6,7 @@
 #include <dap/protocol.h>
 #include <common/engine/printf.h>
 #include <map>
+#include <set>
 namespace DebugServer
 {
 
@@ -30,6 +31,8 @@ namespace DebugServer
 
 	template <typename V>
 	using caseless_path_map = typename std::map<std::string, V, ci_less>;
+
+  using caseless_path_set = typename std::set<std::string, ci_less>;
 
 	inline bool CaseInsensitiveEquals(const std::string &s1, const std::string &s2)
 	{
@@ -61,6 +64,11 @@ namespace DebugServer
 #define RETURN_DAP_ERROR(message) \
 	LogError("%s", message);      \
 	return dap::Error(message);
+
+#define RETURN_COND_DAP_ERROR(cond, message) \
+  if (cond) { \
+    RETURN_DAP_ERROR(message); \
+  }
 
 	template <typename T>
 	T ByteSwap(T val)
