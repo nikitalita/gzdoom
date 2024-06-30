@@ -100,6 +100,11 @@ void PexCache::ScanScriptsInContainer(int baselump, BinaryMap &p_scripts, const 
 		if (namespaces.Size() == 0){
 			return;
 		}
+		auto addEmptyBinIfNotExists = [&](int ref, const char * scriptPath){
+			if (p_scripts.find(ref) == p_scripts.end()) {
+				p_scripts[ref] = makeEmptyBinary(scriptPath);
+			}
+		};
 		// get all the script names in the container
 		for (auto ns: namespaces) {
 			if (!ns){
@@ -135,22 +140,22 @@ void PexCache::ScanScriptsInContainer(int baselump, BinaryMap &p_scripts, const 
 				if (!cls_type || (!cls_type->isClass() && !cls_type->isStruct())) {
 					continue;
 				}
-				int ref = -1;
+				int cls_ref = -1;
+				FName srclmpname = NAME_None;
 				if (cls_type->isClass()) {
 					auto class_type = static_cast<PClassType *>(cls_type);
-					auto srclmpname = class_type->Descriptor->SourceLumpName;
+					srclmpname = class_type->Descriptor->SourceLumpName;
 					if (srclmpname == NAME_None) {
 						// skip
 						continue;
 					}
-					ref = GetScriptReference(srclmpname.GetChars());
-					if (filterRef != -1 && filterRef != ref){
+					cls_ref = GetScriptReference(srclmpname.GetChars());
+					// TODO: Fix for mixins, this will currently not hit if the script that contains the mixin gets added after the initial scan
+					if (filterRef != -1 && filterRef != cls_ref){
 						continue;
 					}
-					if (p_scripts.find(ref) == p_scripts.end()) {
-						p_scripts[ref] = makeEmptyBinary(srclmpname.GetChars());
-					}
-					p_scripts[ref]->classes[cls_name] = static_cast<PClassType *>(cls_type);
+					addEmptyBinIfNotExists(cls_ref, srclmpname.GetChars());
+					p_scripts[cls_ref]->classes[cls_name] = static_cast<PClassType *>(cls_type);
 				} else {
 				}
 
@@ -172,13 +177,20 @@ void PexCache::ScanScriptsInContainer(int baselump, BinaryMap &p_scripts, const 
 								}
 								auto scriptFunc = static_cast<VMScriptFunction *>(vmfunc);
 								if (scriptFunc) {
-									auto script_ref = ref == -1 ? GetScriptReference(scriptFunc->SourceFileName.GetChars()) : ref;
+									if (scriptFunc->SourceFileName.IsEmpty()){
+										// abstract function
+										if (cls_ref == -1 || !IsFunctionAbstract(vmfunc)){
+											continue;
+										}
+										addEmptyBinIfNotExists(cls_ref, srclmpname.GetChars());
+										p_scripts[cls_ref]->functions[scriptFunc->QualifiedName] = pfunc;
+										continue;
+									}
+									auto script_ref = GetScriptReference(scriptFunc->SourceFileName.GetChars());
 									if (filterRef != -1 && filterRef != script_ref){
 										continue;
 									}
-									if (p_scripts.find(script_ref) == p_scripts.end()) {
-										p_scripts[script_ref] = makeEmptyBinary(scriptFunc->SourceFileName.GetChars());
-									}
+									addEmptyBinIfNotExists(script_ref, scriptFunc->SourceFileName.GetChars());
 									auto this_bin = p_scripts[script_ref];
 									this_bin->functions[scriptFunc->QualifiedName] = pfunc;
 									if (cls_type->isStruct() && this_bin->structs.find(cls_name) == this_bin->structs.end()) {
