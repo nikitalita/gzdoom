@@ -32,8 +32,6 @@ namespace DebugServer
 		}
 		if (!m_subView)
 		{
-			// TODO: turn this back on
-			// if(!IsVMValueValid(&m_value)) {
 			if (!m_value.a)
 			{
 				variable.value = StringFormat("%s <NULL>", typeval.c_str());

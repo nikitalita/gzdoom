@@ -42,11 +42,6 @@ namespace DebugServer
 	{
 		dap::Variable variable;
 
-		// if (!m_variable){
-		// 	variable.type = m_type->DescriptiveName();
-		// 	variable.value = "NULL";
-		// 	return variable;
-		// }
 		auto basic_type = GetBasicType(m_type);
 		variable.type = basicTypeNames[basic_type];
 

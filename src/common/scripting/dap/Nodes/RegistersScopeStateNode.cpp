@@ -178,10 +178,7 @@ namespace DebugServer
 
   PType *ParamsRegistersNode::GetRegisterType(int index)
   {
-    //    auto a_types = m_stackFrame->Func->Proto->ArgumentTypes;
-    //  if (index < m_stackFrame->Func->Proto->ArgumentTypes.size()) {
-    //      return m_stackFrame->Func->Proto->ArgumentTypes[index];
-    //  }
+    // TODO: Is it possible to get the type of parameters?
     return TypeVoidPtr;
   }
 

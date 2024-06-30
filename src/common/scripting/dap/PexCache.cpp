@@ -68,6 +68,7 @@ void PexCache::ScanAllScripts(){
 
 
 void PexCache::ScanScriptsInContainer(int baselump, BinaryMap &p_scripts, const std::string &filter){
+		// TODO: Get the modified times from the unlinked objects?
 		TArray<PNamespace*> namespaces;
 		std::string filterPath = filter;
 		int filterRef = -1;
