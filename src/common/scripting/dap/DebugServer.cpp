@@ -3,6 +3,8 @@
 #include <functional>
 #include <common/engine/printf.h>
 
+// Main entry point for the debug server
+
 namespace DebugServer
 {
     DebugServer::DebugServer()
@@ -24,16 +26,19 @@ namespace DebugServer
         }
     }
 
-    bool DebugServer::Listen()
+    bool DebugServer::Listen(int port)
     {
-        constexpr int port = 19021;
+				if (!port)
+				{
+					return false;
+				}
         if (!m_server)
         {
             m_server = dap::net::Server::create();
         }
         else
         {
-            m_server->stop();
+            Stop();
         }
 
         auto onClientConnected =
@@ -63,9 +68,16 @@ namespace DebugServer
         return true;
     }
 
+		void DebugServer::Stop() {
+			std::unique_lock<std::mutex> lock(mutex);
+			terminate = true;
+			cv.notify_all();
+			m_server->stop();
+		}
+
     DebugServer::~DebugServer()
     {
-        m_server->stop();
+        Stop();
         if (restart_thread.joinable())
         {
             restart_thread.join();

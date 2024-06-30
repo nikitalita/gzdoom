@@ -12,7 +12,8 @@ namespace DebugServer
 		void runRestartThread();
 		~DebugServer();
 
-		bool Listen();
+		bool Listen(int port);
+		void Stop();
 
 	private:
 		std::unique_ptr<ZScriptDebugger> debugger;
@@ -21,5 +22,6 @@ namespace DebugServer
 		std::mutex mutex; // guards 'terminate'
 		bool terminate;
 		std::thread restart_thread;
+
 	};
 }
