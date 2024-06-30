@@ -36,21 +36,6 @@ namespace DebugServer
     return GetScript((source.origin.has_value() ? source.origin.value() + ":" : "") + source.path.value(""));
   }
 
-	std::string GetArchiveName(const std::string &scriptPath){
-		auto colonPos = scriptPath.find(':');
-		if (colonPos != std::string::npos){
-			return scriptPath.substr(0, colonPos);
-		}
-		auto lump = fileSystem.FindFile(scriptPath.c_str());
-		if (lump == -1){
-			return "";
-		}
-		auto wadnum = fileSystem.GetFileContainer(lump);
-		if (wadnum == -1){
-			return "";
-		}
-		return fileSystem.GetResourceFileName(wadnum);
-	}
 
 std::shared_ptr<Binary> PexCache::makeEmptyBinary(const std::string &scriptPath){
 	auto binary = std::make_shared<Binary>();
@@ -88,7 +73,7 @@ void PexCache::ScanScriptsInContainer(int baselump, BinaryMap &p_scripts, const 
 		int filterRef = -1;
 		if (!filter.empty()) {
 			std::string truncScriptPath = GetScriptPathNoQual(filter);
-			int filelump = fileSystem.FindFile(filter.c_str());
+			int filelump = fileSystem.FindFile(truncScriptPath.c_str());
 			if (filelump == -1) {
 				return;
 			}
@@ -213,9 +198,17 @@ void PexCache::ScanScriptsInContainer(int baselump, BinaryMap &p_scripts, const 
 		}
 	}
 
+	std::shared_ptr<Binary> PexCache::AddScript(const std::string &scriptPath){
+		{
+			scripts_lock scriptLock(m_scriptsMutex);
+			ScanScriptsInContainer(-1, m_scripts, scriptPath);
+		}
+		return GetCachedScript(GetScriptReference(scriptPath));
+	}
+
   std::shared_ptr<Binary> PexCache::GetScript(std::string fqsn)
   {
-		if (fqsn.find(':') == std::string::npos){
+		if (!ScriptHasQual(fqsn)){
 			auto archive_name = GetArchiveName(fqsn);
 			if (archive_name.empty()){
 				return nullptr;
@@ -227,28 +220,7 @@ void PexCache::ScanScriptsInContainer(int baselump, BinaryMap &p_scripts, const 
 		if (binary){
 			return binary;
 		}
-		scripts_lock scriptLock(m_scriptsMutex);
-		ScanScriptsInContainer(-1, m_scripts, fqsn);
-		return GetCachedScript(reference);
-  }
-
-  bool PexCache::GetDecompiledSourceByRef(int ref, std::string &decompiledSource)
-  {
-    auto binary = GetCachedScript(ref);
-    if (!binary)
-    {
-      return false;
-    }
-    auto lump = fileSystem.FindFile(binary->scriptPath.c_str());
-    if (lump == -1)
-    {
-      return false;
-    }
-    auto size = fileSystem.FileLength(lump);
-    decompiledSource.reserve(size);
-    // Godspeed, you magnificent bastard
-    fileSystem.ReadFile(lump, decompiledSource.data());
-    return true;
+		return AddScript(fqsn);
   }
 
   inline bool GetSourceContent(const std::string &scriptPath, std::string &decompiledSource)
@@ -289,7 +261,6 @@ void PexCache::ScanScriptsInContainer(int baselump, BinaryMap &p_scripts, const 
 
   bool PexCache::GetSourceData(const std::string &scriptName, dap::Source &data)
   {
-    const int sourceReference = GetScriptReference(scriptName);
     auto binary = GetScript(scriptName);
     if (!binary)
     {

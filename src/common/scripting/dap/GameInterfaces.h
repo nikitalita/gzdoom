@@ -3,9 +3,9 @@
 #include <common/scripting/vm/vmintern.h>
 #include <common/scripting/vm/vm.h>
 #include <common/scripting/core/types.h>
+#include <common/objects/dobject.h>
+#include <common/utility/zstring.h>
 #include "Utilities.h"
-#include "dobject.h"
-#include "zstring.h"
 
 namespace DebugServer
 {
@@ -72,10 +72,29 @@ namespace DebugServer
 		}
 		return scriptPath.substr(colonPos + 1);
 	}
+static inline bool ScriptHasQual(const std::string &scriptPath){
+	return scriptPath.find(':') != std::string::npos;
+}
 
-	static inline std::string GetScriptWithQual(const std::string &scriptPath, const std::string &container){
-		return container + ":" + GetScriptPathNoQual(scriptPath);
+static inline std::string GetScriptWithQual(const std::string &scriptPath, const std::string &container){
+	return container + ":" + GetScriptPathNoQual(scriptPath);
+}
+
+static inline std::string GetArchiveName(const std::string &scriptPath){
+	auto colonPos = scriptPath.find(':');
+	if (colonPos != std::string::npos){
+		return scriptPath.substr(0, colonPos);
 	}
+	auto lump = fileSystem.FindFile(scriptPath.c_str());
+	if (lump == -1){
+		return "";
+	}
+	auto wadnum = fileSystem.GetFileContainer(lump);
+	if (wadnum == -1){
+		return "";
+	}
+	return fileSystem.GetResourceFileName(wadnum);
+}
 
 static inline bool isScriptPath(const std::string &path){
 		if (path.empty()){
@@ -149,7 +168,12 @@ static inline bool isScriptPath(const std::string &path){
 
   static inline bool isValidDobject(DObject *obj)
   {
-    return obj && obj->MagicID == DObject::MAGIC_ID;
+    return obj
+#ifndef NDEBUG
+		&& obj->MagicID == DObject::MAGIC_ID;
+#else
+		;
+#endif
   }
 
   static inline bool IsVMValValidDObject(const VMValue *val)

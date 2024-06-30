@@ -27,6 +27,7 @@ namespace DebugServer
 		};
 		enum class pauseReason
 		{
+			CONTINUING = -1,
 			NONE = 0,
 			step,
 			breakpoint,
@@ -41,8 +42,8 @@ namespace DebugServer
 		RuntimeState *m_runtimeState;
 		BreakpointManager *m_breakpointManager;
 
-		DebuggerState m_state = DebuggerState::kRunning;
-		uint32_t m_currentStepStackId = 0;
+		std::atomic<DebuggerState> m_state = DebuggerState::kRunning;
+		std::atomic<uint32_t> m_currentStepStackId = 0;
 		StepType m_currentStepType = StepType::STEP_IN;
 		VMFrame *m_currentStepStackFrame;
 		VMFunction *m_currentVMFunction;
@@ -61,5 +62,7 @@ namespace DebugServer
 		bool Continue();
 		bool Pause();
 		bool Step(uint32_t stackId, StepType stepType);
+	private:
+		inline pauseReason CheckState(VMFrameStack *stack, VMReturn *ret, int numret, const VMOP *pc);
 	};
 }
