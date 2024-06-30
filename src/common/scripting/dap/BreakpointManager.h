@@ -49,7 +49,6 @@ namespace DebugServer
     dap::ResponseOrError<dap::SetFunctionBreakpointsResponse> SetFunctionBreakpoints(const dap::SetFunctionBreakpointsRequest &request);
     dap::ResponseOrError<dap::SetInstructionBreakpointsResponse> SetInstructionBreakpoints(const dap::SetInstructionBreakpointsRequest &request);
 		void ClearBreakpoints(bool emitChanged = false);
-		// bool CheckIfFunctionWillWaitOrExit(RE::BSScript::Internal::CodeTasklet* tasklet);
 		void InvalidateAllBreakpointsForScript(int ref, bool emitChanged = false);
 		bool GetExecutionIsAtValidBreakpoint(VMFrameStack *stack, VMReturn *ret, int numret, const VMOP *pc);
 

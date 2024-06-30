@@ -44,11 +44,6 @@ namespace DebugServer
 
 		elements.erase(elements.begin());
 
-		// if (!m_stackStateNode) {
-		// 	m_stackStateNode = std::make_shared<StackStateNode>(stackId);
-		// }
-
-		// std::shared_ptr<StateNodeBase> currentNode = m_stackStateNode;
 		std::shared_ptr<StateNodeBase> currentNode = std::make_shared<StackStateNode>(stackId);
 		while (!elements.empty() && currentNode)
 		{
@@ -233,7 +228,6 @@ namespace DebugServer
 	void RuntimeState::Reset()
 	{
 		m_paths->Clear();
-		// m_stackStateNode.reset();
 		RuntimeState::m_GlobalVMStack = nullptr;
 	}
 }

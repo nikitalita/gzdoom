@@ -17,7 +17,6 @@ namespace DebugServer
         EVENT_DECLARATION(InstructionExecution, void(VMFrameStack *stack, VMReturn *ret, int numret, const VMOP *pc))
         EVENT_DECLARATION(CreateStack, void(VMFrameStack *))
         EVENT_DECLARATION(CleanupStack, void(uint32_t))
-        // EVENT_DECLARATION(InitScript, void(RE::TESInitScriptEvent*))
         EVENT_DECLARATION(Log, void(int level, const char *message))
         EVENT_DECLARATION(BreakpointChanged, void(const dap::Breakpoint &bpoint, const std::string &))
 

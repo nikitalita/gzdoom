@@ -45,7 +45,6 @@ namespace DebugServer
 		{
 			names.push_back(SELF);
 			// TODO: Figure out if there is a state_pointer in non-action methods?
-			// names.push_back(STATE_POINTER);
 		}
 		if (IsFunctionNative(m_stackFrame->Func))
 		{
@@ -59,9 +58,6 @@ namespace DebugServer
 
 	bool LocalScopeStateNode::GetChildNode(std::string name, std::shared_ptr<StateNodeBase> &node)
 	{
-		bool has_self = false;
-		bool has_invoker = false;
-		bool has_state_pointer = false;
 		if (m_children.find(name) != m_children.end())
 		{
 			node = m_children[name];
@@ -70,12 +66,10 @@ namespace DebugServer
 		int paramidx = -1;
 		if (CaseInsensitiveEquals(name, SELF))
 		{
-			has_self = true;
 			paramidx = 0;
 		}
 		else if (CaseInsensitiveEquals(name, INVOKER))
 		{
-			has_invoker = true;
 			paramidx = 1;
 		}
 		else if (CaseInsensitiveEquals(name, STATE_POINTER))
@@ -115,8 +109,6 @@ namespace DebugServer
 			return true;
 		}
 		// TODO: no locals yet; waiting on PR to add local/register mapping to VMFrame
-		return false;
-
 		return false;
 	}
 }

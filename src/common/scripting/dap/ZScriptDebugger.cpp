@@ -391,8 +391,6 @@ namespace DebugServer
 	dap::ResponseOrError<dap::StackTraceResponse> ZScriptDebugger::GetStackTrace(const dap::StackTraceRequest &request)
 	{
 		dap::StackTraceResponse response;
-		// const auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-		// RE::BSSpinLockGuard lock(vm->runningStacksLock);
 
 		if (request.threadId <= -1)
 		{
@@ -451,8 +449,6 @@ namespace DebugServer
 	dap::ResponseOrError<dap::ScopesResponse> ZScriptDebugger::GetScopes(const dap::ScopesRequest &request)
 	{
 		dap::ScopesResponse response;
-		// const auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-		// RE::BSSpinLockGuard lock(vm->runningStacksLock);
 
 		std::vector<std::shared_ptr<StateNodeBase>> frameScopes;
 		if (request.frameId < 0)
@@ -488,9 +484,6 @@ namespace DebugServer
 	dap::ResponseOrError<dap::VariablesResponse> ZScriptDebugger::GetVariables(const dap::VariablesRequest &request)
 	{
 		dap::VariablesResponse response;
-
-		// const auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-		// RE::BSSpinLockGuard lock(vm->runningStacksLock);
 
 		std::vector<std::shared_ptr<StateNodeBase>> variableNodes;
 		if (!m_runtimeState->ResolveChildrenByParentId(static_cast<uint32_t>(request.variablesReference), variableNodes))
@@ -544,38 +537,6 @@ namespace DebugServer
 	dap::ResponseOrError<dap::LoadedSourcesResponse> ZScriptDebugger::GetLoadedSources(const dap::LoadedSourcesRequest &request)
 	{
 		return m_pexCache->GetLoadedSources(request);
-//		dap::LoadedSourcesResponse response;
-//		int lump, lastlump = 0;
-//		m_pexCache->ScanAllScripts();
-//		for (auto &script : m_pexCache->GetScripts())
-//		{
-//			response.sources.push_back(script.second->sourceData);
-//		}
-//		while ((lump = fileSystem.FindLump("ZSCRIPT", &lastlump)) != -1)
-//		{
-//			dap::Source source;
-//			std::string path = fileSystem.GetFileFullPath(lump).c_str();
-//			int len = fileSystem.FileLength(lump);
-//			if (m_pexCache->GetSourceData(path, source))
-//			{
-//				auto ref = GetSourceReference(source);
-//				uint32_t hash = fileSystem.FileHash(lump);
-//				if (hash > 0)
-//				{
-//					source.checksums = {{"CRC32", std::to_string(hash)}};
-//				}
-//				// TODO: Get the modified times from the unlinked objects?
-//				if (m_projectSources.find(ref) != m_projectSources.end())
-//				{
-//					response.sources.push_back(m_projectSources[ref]);
-//				}
-//				else
-//				{
-//					response.sources.push_back(source);
-//				}
-//			}
-//		}
-//		return response;
 	}
 
 	dap::ResponseOrError<dap::DisassembleResponse> ZScriptDebugger::Disassemble(const dap::DisassembleRequest &request)

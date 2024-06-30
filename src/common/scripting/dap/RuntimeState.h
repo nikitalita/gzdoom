@@ -15,7 +15,6 @@ namespace DebugServer
 
 	public:
 		static VMFrameStack *m_GlobalVMStack;
-		// std::shared_ptr<StateNodeBase> m_stackStateNode;
 		explicit RuntimeState(const std::shared_ptr<IdProvider> &idProvider);
 		void Reset();
 		bool ResolveStateByPath(std::string requestedPath, std::shared_ptr<StateNodeBase> &node);

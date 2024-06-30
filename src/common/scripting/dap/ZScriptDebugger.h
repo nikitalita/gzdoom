@@ -50,12 +50,6 @@ namespace DebugServer
 		void SendEvent(const T &event) const;
 		void LogGameOutput(Severity severity, const std::string &msg) const;
 		void Initialize();
-		// HRESULT Initialize() ;
-		//  HRESULT Attach()  { return 0; };
-		//  HRESULT Launch(std::string fileExec, std::vector<std::string> execArgs, bool stopAtEntry = false)  { return 0; }
-		//  HRESULT ConfigurationDone()  { return 0; }
-
-		// dap::Response Disconnect(DisconnectAction action = DisconnectDefault)  { return dap::DisconnectResponse(); }
 
 		int GetLastStoppedThreadId() { return 0; }
 		dap::ResponseOrError<dap::InitializeResponse> Initialize(const dap::InitializeRequest &request);
@@ -75,12 +69,6 @@ namespace DebugServer
 		dap::ResponseOrError<dap::SourceResponse> GetSource(const dap::SourceRequest &request);
 		dap::ResponseOrError<dap::LoadedSourcesResponse> GetLoadedSources(const dap::LoadedSourcesRequest &request);
 		dap::ResponseOrError<dap::DisassembleResponse> Disassemble(const dap::DisassembleRequest &request);
-		// dap::Response Evaluate(const dap::SetBreakpointsRequest& request)  { return 0; }
-		// dap::Response SetVariable(const dap::SetBreakpointsRequest& request)  { return 0; }
-		// dap::Response SetVariableByExpression(const dap::SetBreakpointsRequest& request)  { return 0; }
-		// void InsertExceptionBreakpoint(const std::string& name, dap::Breakpoint& breakpoint)  { }
-		// int GetNamedVariables(uint64_t variablesReference) ;
-		//	void bind(const std::shared_ptr<dap::Session>& session);
 	private:
 		bool m_closed = false;
 

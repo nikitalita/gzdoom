@@ -49,15 +49,10 @@ namespace DebugServer
 					stackFrame.line = max_line + 1;
 					stackFrame.column = 1;
 				}
-				//        stackFrame.instructionPointerReference = GetIPRefFromFrame(m_stackFrame);
 				stackFrame.instructionPointerReference = StringFormat("%p", m_stackFrame->PC);
 			}
 		}
 		// TODO: Something with state pointer if we can get it?
-		// if (strcmp(m_stackFrame->owningFunction->GetStateName().c_str(), "") != 0)
-		// {
-		// 	name = StringFormat("%s (%s)", name.c_str(), m_stackFrame->owningFunction->GetStateName().c_str());
-		// }
 
 		stackFrame.name = m_stackFrame->Func->PrintableName;
 

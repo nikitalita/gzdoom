@@ -209,18 +209,7 @@ static inline bool isScriptPath(const std::string &path){
       return VMValue();
     }
     VMValue new_val = (void *)nullptr;
-    // use static casts instead of c-style casts
-    // VMValue is a union of different types:
-    //	union
-    //	{
-    //		int i;
-    //		void *a;
-    //		double f;
-    //		struct { int foo[2]; } biggest;
-    //		const FString *sp;
-    //	};
-    // So it's like this:
-    // new_val = static_cast<uint32_t>(val->i); // note the & operator
+
     switch (pointed_type)
     {
     case BASIC_SpriteID:
