@@ -160,7 +160,8 @@ namespace DebugServer
 
 	std::shared_ptr<StateNodeBase> RuntimeState::CreateNodeForVariable(std::string name, VMValue variable, PType *p_type)
 	{
-		if (IsBasicNonPointerType(p_type) || (IsBasicType(p_type) && !p_type->isObjectPointer()))
+
+		if (IsBasicNonPointerType(p_type) || (p_type->isPointer() && !p_type->isObjectPointer() && !static_cast<PPointer *>(p_type)->PointedType->isStruct()))
 		{
 			return std::make_shared<ValueStateNode>(name, variable, p_type);
 		}
@@ -172,7 +173,7 @@ namespace DebugServer
 		{
 			return std::make_shared<ObjectStateNode>(name, variable, p_type);
 		}
-		else if (p_type->isStruct() || p_type->isContainer())
+		else if (p_type->isStruct() || p_type->isContainer() || (p_type->isPointer() && static_cast<PPointer *>(p_type)->PointedType->isStruct()))
 		{
 			return std::make_shared<StructStateNode>(name, variable, p_type);
 		}
