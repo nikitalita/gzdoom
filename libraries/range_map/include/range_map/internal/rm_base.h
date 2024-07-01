@@ -7,7 +7,7 @@
 #include <utility>
 #include <tuple>
 
-namespace DebugServer {
+namespace beneficii {
     
 // for the piecewise constructor of range_map_item; used with emplace() in 
 // range_map; you would do emplace(encaps (true or false), std::piecewise_construct, 

@@ -5,7 +5,7 @@
 
 #include "rm_base.h"
 
-namespace DebugServer {
+namespace beneficii {
 
 // the nodes the are allocated in memory by the range_map; the range_map_item used
 // is constructed in this node; start and end points are kept track of here
