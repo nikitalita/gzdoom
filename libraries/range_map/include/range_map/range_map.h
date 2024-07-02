@@ -283,19 +283,19 @@ namespace beneficii {
             //returns past-begin reverse_iterator
             //RETURN VALUE = reverse_iterator to past-begin point
             reverse_iterator rend() {
-                return reverse_iterator(nullptr, false);
+                return reverse_iterator(iterator(nullptr, false));
             }
             
             //returns past-begin const_reverse_iterator
             //RETURN VALUE = const_reverse_iterator to past-begin point
             const_reverse_iterator rend() const {
-                return const_reverse_iterator(nullptr, false);
+                return const_reverse_iterator(const_iterator(nullptr, false));
             }
             
             //returns past-begin const_reverse_iterator
             //RETURN VALUE = const_reverse_iterator to past-begin point
             const_reverse_iterator crend() const {
-                return const_reverse_iterator(nullptr, false);
+                return const_reverse_iterator(const_iterator(nullptr, false));
             }
             
             // returns iterator to opposite end point of current iterator
@@ -1103,8 +1103,8 @@ namespace beneficii {
                         if(!_comp(_n->_range.get_left(), (*_ins)->_range.get_left()) 
                                 && !_comp((*_ins)->_range.get_right(), _n->_range.get_right())) {
 													// We allow matching sets if encapsulate is set; if not, fail
-													if(!_encaps || (_allow_encaps_matching_sets && !(!_comp((*_ins)->_range.get_left(), _n->_range.get_left())
-														 && !_comp(_n->_range.get_right(), (*_ins)->_range.get_right())))) {
+													if(!_allow_encaps_matching_sets || !_encaps || !(!_comp((*_ins)->_range.get_left(), _n->_range.get_left())
+														 && !_comp(_n->_range.get_right(), (*_ins)->_range.get_right()))) {
 
 														_delete_node(*_ins);
 														*_ins = _n;
