@@ -521,6 +521,8 @@ namespace DebugServer
 		// TODO: add a windows-compatible fmemopen
 		RETURN_DAP_ERROR("Disassemble not supported on Windows");
 #else
+		return m_pexCache->Disassemble(request);
+
 		auto ref = request.memoryReference;
 		// ref is in the format "0x12345678", we need to convert it to a number
 		if (ref.size() < 3 || ref[0] != '0' || ref[1] != 'x')

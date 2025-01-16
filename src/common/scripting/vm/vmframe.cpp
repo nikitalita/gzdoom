@@ -270,6 +270,10 @@ int VMScriptFunction::PCToLine(const VMOP *pc)
 		{
 			return LineInfo[i - 1].LineNumber;
 		}
+//		else if (i == LineInfoCount - 1 && LineInfo[i].InstructionIndex == PCIndex)
+//		{
+//			return LineInfo[i].LineNumber;
+//		}
 	}
 	return -1;
 }
