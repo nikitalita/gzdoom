@@ -12,11 +12,11 @@ namespace DebugServer
 	{
 	}
 
-	bool StackStateNode::SerializeToProtocol(dap::Thread& thread) const
+	bool StackStateNode::SerializeToProtocol(dap::Thread &thread) const
 	{
 		thread.id = m_stackId;
 
-		std::vector<VMFrame*> frames;
+		std::vector<VMFrame *> frames;
 		RuntimeState::GetStackFrames(m_stackId, frames);
 
 		if (frames.empty())
@@ -33,9 +33,9 @@ namespace DebugServer
 		return true;
 	}
 
-	bool StackStateNode::GetChildNames(std::vector<std::string>& names)
+	bool StackStateNode::GetChildNames(std::vector<std::string> &names)
 	{
-		std::vector<VMFrame*> frames;
+		std::vector<VMFrame *> frames;
 		RuntimeState::GetStackFrames(m_stackId, frames);
 
 		for (size_t i = 0; i < frames.size(); i++)
@@ -46,7 +46,7 @@ namespace DebugServer
 		return true;
 	}
 
-	bool StackStateNode::GetChildNode(const std::string name, std::shared_ptr<StateNodeBase>& node)
+	bool StackStateNode::GetChildNode(const std::string name, std::shared_ptr<StateNodeBase> &node)
 	{
 		int level;
 		if (!ParseInt(name, &level))
@@ -59,7 +59,7 @@ namespace DebugServer
 			return true;
 		}
 
-		std::vector<VMFrame*> frames;
+		std::vector<VMFrame *> frames;
 		if (!RuntimeState::GetStackFrames(m_stackId, frames))
 		{
 			return false;

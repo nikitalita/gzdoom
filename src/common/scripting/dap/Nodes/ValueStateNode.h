@@ -11,11 +11,11 @@ namespace DebugServer
 	{
 		std::string m_name;
 		const VMValue m_variable;
-		PType* m_type;
+		PType *m_type;
 
 	public:
-		ValueStateNode(std::string name, VMValue variable, PType* type);
-		bool SerializeToProtocol(dap::Variable& variable) override;
-		static dap::Variable ToVariable(const VMValue& m_variable, PType * m_type);
+		ValueStateNode(std::string name, VMValue variable, PType *type);
+		bool SerializeToProtocol(dap::Variable &variable) override;
+		static dap::Variable ToVariable(const VMValue &m_variable, PType *m_type);
 	};
 }

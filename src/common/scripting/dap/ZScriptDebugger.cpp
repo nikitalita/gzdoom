@@ -26,15 +26,16 @@ namespace DebugServer
 		m_runtimeState = std::make_shared<RuntimeState>(m_idProvider);
 
 		m_executionManager = std::make_shared<DebugExecutionManager>(m_runtimeState.get(), m_breakpointManager.get());
-
 	}
 
-	void ZScriptDebugger::StartSession(std::shared_ptr<dap::Session> session) {
-    if (m_session){
-      LogError("Session is already active, ending it first!");
-      m_session->send(dap::TerminatedEvent());
-      EndSession();
-    }
+	void ZScriptDebugger::StartSession(std::shared_ptr<dap::Session> session)
+	{
+		if (m_session)
+		{
+			LogError("Session is already active, ending it first!");
+			m_session->send(dap::TerminatedEvent());
+			EndSession();
+		}
 		m_closed = false;
 		m_session = session;
 		m_executionManager->Open(session);
@@ -57,7 +58,8 @@ namespace DebugServer
 
 		RegisterSessionHandlers();
 	}
-	void ZScriptDebugger::EndSession() {
+	void ZScriptDebugger::EndSession()
+	{
 		m_executionManager->Close();
 		m_session = nullptr;
 		m_closed = true;
@@ -74,84 +76,66 @@ namespace DebugServer
 		m_projectPath = "";
 		m_projectSources.clear();
 		m_breakpointManager->ClearBreakpoints();
-		
 	}
 
-	void ZScriptDebugger::RegisterSessionHandlers() {
+	void ZScriptDebugger::RegisterSessionHandlers()
+	{
 		// The Initialize request is the first message sent from the client and the response reports debugger capabilities.
 		// https://microsoft.github.io/debug-adapter-protocol/specification#Requests_Initialize
-		m_session->registerHandler([this](const dap::InitializeRequest& request) {
-			return Initialize(request);
-		});
-		m_session->onError([this](const char* msg) {
-			Printf("%s", msg);
-		});
+		m_session->registerHandler([this](const dap::InitializeRequest &request)
+								   { return Initialize(request); });
+		m_session->onError([this](const char *msg)
+						   { Printf("%s", msg); });
 		m_session->registerSentHandler(
 			// After an intialize response is sent, we send an initialized event to indicate that the client can now send requests.
-			[this](const dap::ResponseOrError<dap::InitializeResponse>&) {
+			[this](const dap::ResponseOrError<dap::InitializeResponse> &)
+			{
 				SendEvent(dap::InitializedEvent());
-		});
+			});
 
 		// Client is done configuring.
-		m_session->registerHandler([this](const dap::ConfigurationDoneRequest&) {
-			return dap::ConfigurationDoneResponse{};
-		});
+		m_session->registerHandler([this](const dap::ConfigurationDoneRequest &)
+								   { return dap::ConfigurationDoneResponse{}; });
 
 		// The Disconnect request is sent by the client before it disconnects from the server.
 		// https://microsoft.github.io/debug-adapter-protocol/specification#Requests_Disconnect
-		m_session->registerHandler([this](const dap::DisconnectRequest&) {
+		m_session->registerHandler([this](const dap::DisconnectRequest &)
+								   {
 			// Client wants to disconnect.
-			return dap::DisconnectResponse{};
-		});
-		m_session->registerHandler([this](const dap::PDSLaunchRequest& request) {
-			return Launch(request);
-		});
-		m_session->registerHandler([this](const dap::PDSAttachRequest& request) {
-			return Attach(request);
-		});
-		m_session->registerHandler([this](const dap::PauseRequest& request) {
-			return Pause(request);
-		});
-		m_session->registerHandler([this](const dap::ContinueRequest& request) {
-			return Continue(request);
-		});
-		m_session->registerHandler([this](const dap::ThreadsRequest& request) {
-			return GetThreads(request);
-		});
-		m_session->registerHandler([this](const dap::SetBreakpointsRequest& request) {
-			return SetBreakpoints(request);
-		});
-		m_session->registerHandler([this](const dap::SetFunctionBreakpointsRequest& request) {
-			return SetFunctionBreakpoints(request);
-		});
-		m_session->registerHandler([this](const dap::StackTraceRequest& request) {
-			return GetStackTrace(request);
-		});
-		m_session->registerHandler([this](const dap::StepInRequest& request) {
-			return StepIn(request);
-		});
-		m_session->registerHandler([this](const dap::StepOutRequest& request) {
-			return StepOut(request);
-		});
-		m_session->registerHandler([this](const dap::NextRequest& request) {
-			return Next(request);
-		});
-		m_session->registerHandler([this](const dap::ScopesRequest& request) {
-			return GetScopes(request);
-		});
-		m_session->registerHandler([this](const dap::VariablesRequest& request) {
-			return GetVariables(request);
-		});
-		m_session->registerHandler([this](const dap::SourceRequest& request) {
-			return GetSource(request);
-		});
-		m_session->registerHandler([this](const dap::LoadedSourcesRequest& request) {
-			return GetLoadedSources(request);
-		});
-    m_session->registerHandler([this](const dap::DisassembleRequest &request) {
-      return Disassemble(request);
-    });
-	}
+			return dap::DisconnectResponse{}; });
+		m_session->registerHandler([this](const dap::PDSLaunchRequest &request)
+								   { return Launch(request); });
+		m_session->registerHandler([this](const dap::PDSAttachRequest &request)
+								   { return Attach(request); });
+		m_session->registerHandler([this](const dap::PauseRequest &request)
+								   { return Pause(request); });
+		m_session->registerHandler([this](const dap::ContinueRequest &request)
+								   { return Continue(request); });
+		m_session->registerHandler([this](const dap::ThreadsRequest &request)
+								   { return GetThreads(request); });
+		m_session->registerHandler([this](const dap::SetBreakpointsRequest &request)
+								   { return SetBreakpoints(request); });
+		m_session->registerHandler([this](const dap::SetFunctionBreakpointsRequest &request)
+								   { return SetFunctionBreakpoints(request); });
+		m_session->registerHandler([this](const dap::StackTraceRequest &request)
+								   { return GetStackTrace(request); });
+		m_session->registerHandler([this](const dap::StepInRequest &request)
+								   { return StepIn(request); });
+		m_session->registerHandler([this](const dap::StepOutRequest &request)
+								   { return StepOut(request); });
+		m_session->registerHandler([this](const dap::NextRequest &request)
+								   { return Next(request); });
+		m_session->registerHandler([this](const dap::ScopesRequest &request)
+								   { return GetScopes(request); });
+		m_session->registerHandler([this](const dap::VariablesRequest &request)
+								   { return GetVariables(request); });
+		m_session->registerHandler([this](const dap::SourceRequest &request)
+								   { return GetSource(request); });
+		m_session->registerHandler([this](const dap::LoadedSourcesRequest &request)
+								   { return GetLoadedSources(request); });
+		m_session->registerHandler([this](const dap::DisassembleRequest &request)
+								   { return Disassemble(request); });
+	} 
 
 	dap::Error ZScriptDebugger::Error(const std::string &msg)
 	{
@@ -160,24 +144,32 @@ namespace DebugServer
 	}
 
 	template <typename T, typename>
-	void ZScriptDebugger::SendEvent(const T& event) const{
+	void ZScriptDebugger::SendEvent(const T &event) const
+	{
 		if (m_session)
 			m_session->send(event);
 	}
 
-	std::string LogSeverityEnumStr(Severity severity) {
-		if (severity == Severity::kInfo) {
+	std::string LogSeverityEnumStr(Severity severity)
+	{
+		if (severity == Severity::kInfo)
+		{
 			return std::string("INFO");
-		} else if (severity == Severity::kWarning) {
+		}
+		else if (severity == Severity::kWarning)
+		{
 			return std::string("WARNING");
-		} else if (severity == Severity::kError) {
+		}
+		else if (severity == Severity::kError)
+		{
 			return std::string("ERROR");
 		}
 		return std::string("UNKNOWN_ENUM_LEVEL");
 	}
 
 	// EVENTS
-	void ZScriptDebugger::LogGameOutput(Severity severity, const std::string &msg) const {
+	void ZScriptDebugger::LogGameOutput(Severity severity, const std::string &msg) const
+	{
 		// constexpr const char* format = "GAME EVENT -- {}";
 		// if (severity == Severity::kInfo) {
 		// 	logger::info(format, msg);
@@ -193,7 +185,7 @@ namespace DebugServer
 		// }
 	}
 
-	void ZScriptDebugger::EventLogged(int severity, const char* msg) const
+	void ZScriptDebugger::EventLogged(int severity, const char *msg) const
 	{
 		dap::OutputEvent output;
 		output.category = "console";
@@ -202,7 +194,7 @@ namespace DebugServer
 		SendEvent(output);
 	}
 
-	void ZScriptDebugger::StackCreated(VMFrameStack * stack)
+	void ZScriptDebugger::StackCreated(VMFrameStack *stack)
 	{
 #if 0
 		const auto stackId = 0; // only one stack
@@ -213,7 +205,7 @@ namespace DebugServer
 
 #endif
 	}
-	
+
 	void ZScriptDebugger::StackCleanedUp(uint32_t stackId)
 	{
 #if 0
@@ -229,7 +221,8 @@ namespace DebugServer
 		m_executionManager->HandleInstruction(stack, ret, numret, pc);
 	}
 
-	void ZScriptDebugger::CheckSourceLoaded(const std::string &scriptName) const{
+	void ZScriptDebugger::CheckSourceLoaded(const std::string &scriptName) const
+	{
 		if (!m_pexCache->HasScript(scriptName))
 		{
 			dap::Source source;
@@ -239,24 +232,23 @@ namespace DebugServer
 			}
 			// TODO: Get the modified times from the unlinked objects?
 			auto ref = GetSourceReference(source);
-			if (m_projectSources.find(ref) != m_projectSources.end()) {
+			if (m_projectSources.find(ref) != m_projectSources.end())
+			{
 				source = m_projectSources.at(ref);
 			}
 			SendEvent(dap::LoadedSourceEvent{
 				.reason = "new",
-				.source = source
-				});
+				.source = source});
 		}
 	}
 
-	void ZScriptDebugger::BreakpointChanged(const dap::Breakpoint& bpoint, const std::string& reason) const
+	void ZScriptDebugger::BreakpointChanged(const dap::Breakpoint &bpoint, const std::string &reason) const
 	{
 		// TODO: make this multi-threaded
 		// XSE::GetTaskInterface()->AddTask([this, bpoint, reason]() {
-			SendEvent(dap::BreakpointEvent{
-				.breakpoint = bpoint,
-				.reason = reason
-				});
+		SendEvent(dap::BreakpointEvent{
+			.breakpoint = bpoint,
+			.reason = reason});
 		// });
 	}
 
@@ -272,24 +264,24 @@ namespace DebugServer
 
 		m_executionManager->Close();
 	}
-	
-	dap::ResponseOrError<dap::InitializeResponse> ZScriptDebugger::Initialize(const dap::InitializeRequest& request)
+
+	dap::ResponseOrError<dap::InitializeResponse> ZScriptDebugger::Initialize(const dap::InitializeRequest &request)
 	{
-    m_clientCaps = request;
-    dap::InitializeResponse response;
-    response.supportsConfigurationDoneRequest = true;
-    response.supportsLoadedSourcesRequest = true;
-    response.supportedChecksumAlgorithms = { "CRC32" };
+		m_clientCaps = request;
+		dap::InitializeResponse response;
+		response.supportsConfigurationDoneRequest = true;
+		response.supportsLoadedSourcesRequest = true;
+		response.supportedChecksumAlgorithms = {"CRC32"};
 #if !defined(_WIN32) && !defined(_WIN64)
-    //TODO: remove this when disassemble is supported on windows
-    response.supportsDisassembleRequest = true;
-    response.supportsSteppingGranularity = true;
-    response.supportsFunctionBreakpoints = true;
+		// TODO: remove this when disassemble is supported on windows
+		response.supportsDisassembleRequest = true;
+		response.supportsSteppingGranularity = true;
+		response.supportsFunctionBreakpoints = true;
 #endif
-    return response;
+		return response;
 	}
 
-	dap::ResponseOrError<dap::LaunchResponse> ZScriptDebugger::Launch(const dap::PDSLaunchRequest& request)
+	dap::ResponseOrError<dap::LaunchResponse> ZScriptDebugger::Launch(const dap::PDSLaunchRequest &request)
 	{
 		auto resp = Attach(dap::PDSAttachRequest{
 			.name = request.name,
@@ -297,52 +289,53 @@ namespace DebugServer
 			.request = request.request,
 			.projectPath = request.projectPath,
 			.projectArchive = request.projectArchive,
-			.projectSources = request.projectSources
-			});
-		if (resp.error) {
+			.projectSources = request.projectSources});
+		if (resp.error)
+		{
 			RETURN_DAP_ERROR(resp.error.message.c_str());
 		}
 		return dap::ResponseOrError<dap::LaunchResponse>();
 	}
 
-
-	dap::ResponseOrError<dap::AttachResponse> ZScriptDebugger::Attach(const dap::PDSAttachRequest& request)
+	dap::ResponseOrError<dap::AttachResponse> ZScriptDebugger::Attach(const dap::PDSAttachRequest &request)
 	{
 		m_projectPath = request.projectPath.value("");
 		m_projectArchive = request.projectArchive.value("");
-    m_projectSources.clear();
+		m_projectSources.clear();
 		if (!request.restart.has_value())
 		{
 			m_pexCache->Clear();
 		}
-    for (auto src : request.projectSources.value(std::vector<dap::Source>())) {
-      auto ref = GetSourceReference(src);
-      if (ref < 0) { // no source ref or name, we'll ignore it
-        continue;
-      }
-      // Don't set the reference on the source or the debugger will attempt to get the source from us
-      // Just put it in the project sources
-      m_projectSources[ref] = src;
-    }
+		for (auto src : request.projectSources.value(std::vector<dap::Source>()))
+		{
+			auto ref = GetSourceReference(src);
+			if (ref < 0)
+			{ // no source ref or name, we'll ignore it
+				continue;
+			}
+			// Don't set the reference on the source or the debugger will attempt to get the source from us
+			// Just put it in the project sources
+			m_projectSources[ref] = src;
+		}
 
 		return dap::AttachResponse();
 	}
 
-	dap::ResponseOrError<dap::ContinueResponse> ZScriptDebugger::Continue(const dap::ContinueRequest& request)
+	dap::ResponseOrError<dap::ContinueResponse> ZScriptDebugger::Continue(const dap::ContinueRequest &request)
 	{
 		if (m_executionManager->Continue())
 			return dap::ContinueResponse();
 		RETURN_DAP_ERROR("Could not Continue");
 	}
 
-	dap::ResponseOrError<dap::PauseResponse> ZScriptDebugger::Pause(const dap::PauseRequest& request)
+	dap::ResponseOrError<dap::PauseResponse> ZScriptDebugger::Pause(const dap::PauseRequest &request)
 	{
 		if (m_executionManager->Pause())
 			return dap::PauseResponse();
 		RETURN_DAP_ERROR("Could not Pause");
 	}
 
-	dap::ResponseOrError<dap::ThreadsResponse> ZScriptDebugger::GetThreads(const dap::ThreadsRequest& request)
+	dap::ResponseOrError<dap::ThreadsResponse> ZScriptDebugger::GetThreads(const dap::ThreadsRequest &request)
 	{
 		dap::ThreadsResponse response;
 		// const auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
@@ -383,28 +376,30 @@ namespace DebugServer
 		return response;
 	}
 
-
-
-	dap::ResponseOrError<dap::SetBreakpointsResponse> ZScriptDebugger::SetBreakpoints(const dap::SetBreakpointsRequest& request)
+	dap::ResponseOrError<dap::SetBreakpointsResponse> ZScriptDebugger::SetBreakpoints(const dap::SetBreakpointsRequest &request)
 	{
 		dap::Source source = request.source;
 		auto ref = GetSourceReference(source);
-		if (m_projectSources.find(ref) != m_projectSources.end()) {
+		if (m_projectSources.find(ref) != m_projectSources.end())
+		{
 			source = m_projectSources[ref];
-		} else if (ref > 0){
+		}
+		else if (ref > 0)
+		{
 			// It's not part of the project's imported sources, they have to get the decompiled source from us,
 			// So we set sourceReference to make the debugger request the source from us
 			source.sourceReference = ref;
 		}
-		return m_breakpointManager->SetBreakpoints(source, request.breakpoints.value(std::vector<dap::SourceBreakpoint>()));;
+		return m_breakpointManager->SetBreakpoints(source, request.breakpoints.value(std::vector<dap::SourceBreakpoint>()));
+		;
 	}
 
-	dap::ResponseOrError<dap::SetFunctionBreakpointsResponse> ZScriptDebugger::SetFunctionBreakpoints(const dap::SetFunctionBreakpointsRequest& request)
+	dap::ResponseOrError<dap::SetFunctionBreakpointsResponse> ZScriptDebugger::SetFunctionBreakpoints(const dap::SetFunctionBreakpointsRequest &request)
 	{
-//		RETURN_DAP_ERROR("unimplemented");
-    return dap::SetFunctionBreakpointsResponse();
+		//		RETURN_DAP_ERROR("unimplemented");
+		return dap::SetFunctionBreakpointsResponse();
 	}
-	dap::ResponseOrError<dap::StackTraceResponse> ZScriptDebugger::GetStackTrace(const dap::StackTraceRequest& request)
+	dap::ResponseOrError<dap::StackTraceResponse> ZScriptDebugger::GetStackTrace(const dap::StackTraceRequest &request)
 	{
 		dap::StackTraceResponse response;
 		// const auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
@@ -427,10 +422,11 @@ namespace DebugServer
 
 		for (uint32_t frameIndex = startFrame; frameIndex < frameNodes.size() && frameIndex < startFrame + levels; frameIndex++)
 		{
-			const auto node = dynamic_cast<StackFrameStateNode*>(frameNodes.at(frameIndex).get());
+			const auto node = dynamic_cast<StackFrameStateNode *>(frameNodes.at(frameIndex).get());
 
 			dap::StackFrame frame;
-			if (!node->SerializeToProtocol(frame, m_pexCache.get())) {
+			if (!node->SerializeToProtocol(frame, m_pexCache.get()))
+			{
 				RETURN_DAP_ERROR("Serialization error");
 			}
 
@@ -438,46 +434,51 @@ namespace DebugServer
 		}
 		return response;
 	}
-	dap::ResponseOrError<dap::StepInResponse> ZScriptDebugger::StepIn(const dap::StepInRequest& request)
+	dap::ResponseOrError<dap::StepInResponse> ZScriptDebugger::StepIn(const dap::StepInRequest &request)
 	{
 		// TODO: Support `granularity` and `target`
-		if (m_executionManager->Step(static_cast<uint32_t>(request.threadId), STEP_IN)) {
+		if (m_executionManager->Step(static_cast<uint32_t>(request.threadId), STEP_IN))
+		{
 			return dap::StepInResponse();
 		}
 		RETURN_DAP_ERROR("Could not StepIn");
 	}
-	dap::ResponseOrError<dap::StepOutResponse> ZScriptDebugger::StepOut(const dap::StepOutRequest& request)
+	dap::ResponseOrError<dap::StepOutResponse> ZScriptDebugger::StepOut(const dap::StepOutRequest &request)
 	{
-		if (m_executionManager->Step(static_cast<uint32_t>(request.threadId), STEP_OUT)) {
+		if (m_executionManager->Step(static_cast<uint32_t>(request.threadId), STEP_OUT))
+		{
 			return dap::StepOutResponse();
 		}
 		RETURN_DAP_ERROR("Could not StepOut");
 	}
-	dap::ResponseOrError<dap::NextResponse> ZScriptDebugger::Next(const dap::NextRequest& request)
+	dap::ResponseOrError<dap::NextResponse> ZScriptDebugger::Next(const dap::NextRequest &request)
 	{
-		if (m_executionManager->Step(static_cast<uint32_t>(request.threadId), STEP_OVER)) {
+		if (m_executionManager->Step(static_cast<uint32_t>(request.threadId), STEP_OVER))
+		{
 			return dap::NextResponse();
 		}
 		RETURN_DAP_ERROR("Could not Next");
 	}
-	dap::ResponseOrError<dap::ScopesResponse> ZScriptDebugger::GetScopes(const dap::ScopesRequest& request)
+	dap::ResponseOrError<dap::ScopesResponse> ZScriptDebugger::GetScopes(const dap::ScopesRequest &request)
 	{
 		dap::ScopesResponse response;
 		// const auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
 		// RE::BSSpinLockGuard lock(vm->runningStacksLock);
 
 		std::vector<std::shared_ptr<StateNodeBase>> frameScopes;
-		if (request.frameId < 0) {
+		if (request.frameId < 0)
+		{
 			RETURN_DAP_ERROR(StringFormat("Invalid frameId %d", request.frameId).c_str());
 		}
 		auto frameId = static_cast<uint32_t>(request.frameId);
-		if (!m_runtimeState->ResolveChildrenByParentId(frameId, frameScopes)) {
-			RETURN_DAP_ERROR( StringFormat("No such frameId %d", frameId).c_str());
+		if (!m_runtimeState->ResolveChildrenByParentId(frameId, frameScopes))
+		{
+			RETURN_DAP_ERROR(StringFormat("No such frameId %d", frameId).c_str());
 		}
 
-		for (const auto& frameScope : frameScopes)
+		for (const auto &frameScope : frameScopes)
 		{
-			auto asScopeSerializable = dynamic_cast<IProtocolScopeSerializable*>(frameScope.get());
+			auto asScopeSerializable = dynamic_cast<IProtocolScopeSerializable *>(frameScope.get());
 			if (!asScopeSerializable)
 			{
 				continue;
@@ -488,14 +489,14 @@ namespace DebugServer
 			{
 				continue;
 			}
-			
+
 			response.scopes.push_back(scope);
 		}
 
 		return response;
 	}
 
-	dap::ResponseOrError<dap::VariablesResponse> ZScriptDebugger::GetVariables(const dap::VariablesRequest& request)
+	dap::ResponseOrError<dap::VariablesResponse> ZScriptDebugger::GetVariables(const dap::VariablesRequest &request)
 	{
 		dap::VariablesResponse response;
 
@@ -503,19 +504,21 @@ namespace DebugServer
 		// RE::BSSpinLockGuard lock(vm->runningStacksLock);
 
 		std::vector<std::shared_ptr<StateNodeBase>> variableNodes;
-		if (!m_runtimeState->ResolveChildrenByParentId(static_cast<uint32_t>(request.variablesReference), variableNodes)) {
+		if (!m_runtimeState->ResolveChildrenByParentId(static_cast<uint32_t>(request.variablesReference), variableNodes))
+		{
 			RETURN_DAP_ERROR(StringFormat("No such variablesReference %d", request.variablesReference).c_str());
 		}
 
 		// TODO: support `start`, `filter`, parameter
 		int64_t count = 0;
 		int64_t maxCount = request.count.value(variableNodes.size());
-		for (const auto& variableNode : variableNodes)
+		for (const auto &variableNode : variableNodes)
 		{
-			if (count > maxCount) {
+			if (count > maxCount)
+			{
 				break;
 			}
-			auto asVariableSerializable = dynamic_cast<IProtocolVariableSerializable*>(variableNode.get());
+			auto asVariableSerializable = dynamic_cast<IProtocolVariableSerializable *>(variableNode.get());
 			if (!asVariableSerializable)
 			{
 				continue;
@@ -526,28 +529,30 @@ namespace DebugServer
 			{
 				continue;
 			}
-			
+
 			response.variables.push_back(variable);
 			count++;
 		}
 
 		return response;
 	}
-	dap::ResponseOrError<dap::SourceResponse> ZScriptDebugger::GetSource(const dap::SourceRequest& request)
+	dap::ResponseOrError<dap::SourceResponse> ZScriptDebugger::GetSource(const dap::SourceRequest &request)
 	{
-		if (!request.source.has_value() || !request.source.value().path.has_value() || !request.source.value().sourceReference.has_value()) {
+		if (!request.source.has_value() || !request.source.value().path.has_value() || !request.source.value().sourceReference.has_value())
+		{
 			RETURN_DAP_ERROR("No source path or reference");
 		}
-    auto source = request.source.value();
+		auto source = request.source.value();
 		dap::SourceResponse response;
-    std::string sourceContent;
-		if (m_pexCache->GetDecompiledSource(source, sourceContent)) {
-      response.content = sourceContent;
+		std::string sourceContent;
+		if (m_pexCache->GetDecompiledSource(source, sourceContent))
+		{
+			response.content = sourceContent;
 			return response;
 		}
 		RETURN_DAP_ERROR(StringFormat("No source found for %s", source.path.value("").c_str()).c_str());
 	}
-	dap::ResponseOrError<dap::LoadedSourcesResponse> ZScriptDebugger::GetLoadedSources(const dap::LoadedSourcesRequest& request)
+	dap::ResponseOrError<dap::LoadedSourcesResponse> ZScriptDebugger::GetLoadedSources(const dap::LoadedSourcesRequest &request)
 	{
 		dap::LoadedSourcesResponse response;
 		int lump, lastlump = 0;
@@ -556,192 +561,225 @@ namespace DebugServer
 		{
 			dap::Source source;
 			std::string path = fileSystem.GetFileFullPath(lump).c_str();
-      int len = fileSystem.FileLength(lump);
+			int len = fileSystem.FileLength(lump);
 			if (m_pexCache->GetSourceData(path, source))
 			{
 				auto ref = GetSourceReference(source);
-        uint32_t hash = fileSystem.FileHash(lump);
-        if (hash > 0) {
-          source.checksums = {{"CRC32", std::to_string(hash)}};
-        }
+				uint32_t hash = fileSystem.FileHash(lump);
+				if (hash > 0)
+				{
+					source.checksums = {{"CRC32", std::to_string(hash)}};
+				}
 				// TODO: Get the modified times from the unlinked objects?
-				if (m_projectSources.find(ref) != m_projectSources.end()) {
+				if (m_projectSources.find(ref) != m_projectSources.end())
+				{
 					response.sources.push_back(m_projectSources[ref]);
-				} else {
+				}
+				else
+				{
 					response.sources.push_back(source);
-				}			
+				}
 			}
 		}
 		return response;
 	}
 
-dap::ResponseOrError<dap::DisassembleResponse> ZScriptDebugger::Disassemble(const dap::DisassembleRequest &request) {
+	dap::ResponseOrError<dap::DisassembleResponse> ZScriptDebugger::Disassemble(const dap::DisassembleRequest &request)
+	{
 
 #if defined(_WIN32) || defined(_WIN64)
-    // TODO: add a windows-compatible fmemopen
-    RETURN_DAP_ERROR("Disassemble not supported on Windows");
+		// TODO: add a windows-compatible fmemopen
+		RETURN_DAP_ERROR("Disassemble not supported on Windows");
 #else
-  auto ref = request.memoryReference;
-  // ref is in the format "0x12345678", we need to convert it to a number
-  if (ref.size() < 3 || ref[0] != '0' || ref[1] != 'x') {
-    RETURN_DAP_ERROR("Invalid memoryReference");
-  }
-  uint64_t address = std::stoull(ref.substr(2), nullptr, 16);
-  const int64_t offset = request.instructionOffset.value(0);
-  const uint64_t instructionCount = request.instructionCount;
+		auto ref = request.memoryReference;
+		// ref is in the format "0x12345678", we need to convert it to a number
+		if (ref.size() < 3 || ref[0] != '0' || ref[1] != 'x')
+		{
+			RETURN_DAP_ERROR("Invalid memoryReference");
+		}
+		uint64_t address = std::stoull(ref.substr(2), nullptr, 16);
+		const int64_t offset = request.instructionOffset.value(0);
+		const uint64_t instructionCount = request.instructionCount;
 
-  auto frames = std::vector<VMFrame*>();
-  RuntimeState::GetStackFrames(RuntimeState::GetStack(1), frames);
-  if (frames.empty()) {
-    RETURN_DAP_ERROR("No stack frames");
-  }
-  VMFrame * foundFrame = nullptr;
-  for (auto candFrame : frames) {
-    if (candFrame->PC && (uint64_t) candFrame->PC == address) {
-      foundFrame = candFrame;
-        break;
-    }
-  }
-  if (!foundFrame){
-    RETURN_DAP_ERROR("Could not find frame");
-  }
+		auto frames = std::vector<VMFrame *>();
+		RuntimeState::GetStackFrames(RuntimeState::GetStack(1), frames);
+		if (frames.empty())
+		{
+			RETURN_DAP_ERROR("No stack frames");
+		}
+		VMFrame *foundFrame = nullptr;
+		for (auto candFrame : frames)
+		{
+			if (candFrame->PC && (uint64_t)candFrame->PC == address)
+			{
+				foundFrame = candFrame;
+				break;
+			}
+		}
+		if (!foundFrame)
+		{
+			RETURN_DAP_ERROR("Could not find frame");
+		}
 
-  // get the function and disassemble it
-  if (!foundFrame->Func) {
-    RETURN_DAP_ERROR("No function in frame");
-  }
-  if (IsFunctionNative(foundFrame->Func)) {
-    RETURN_DAP_ERROR("Cannot disassemble native function");
-  }
-  VMScriptFunction *func = static_cast<VMScriptFunction*>(foundFrame->Func);
-  if (!func) {
-    RETURN_DAP_ERROR("No function in frame");
-  }
-  auto Code = func->Code;
+		// get the function and disassemble it
+		if (!foundFrame->Func)
+		{
+			RETURN_DAP_ERROR("No function in frame");
+		}
+		if (IsFunctionNative(foundFrame->Func))
+		{
+			RETURN_DAP_ERROR("Cannot disassemble native function");
+		}
+		VMScriptFunction *func = static_cast<VMScriptFunction *>(foundFrame->Func);
+		if (!func)
+		{
+			RETURN_DAP_ERROR("No function in frame");
+		}
+		auto Code = func->Code;
 
-  if (!Code){
-    RETURN_DAP_ERROR("No code in function");
-  }
-  auto response = dap::DisassembleResponse();
-  response.instructions.reserve(instructionCount);
+		if (!Code)
+		{
+			RETURN_DAP_ERROR("No code in function");
+		}
+		auto response = dap::DisassembleResponse();
+		response.instructions.reserve(instructionCount);
 
-  uint64_t actualCount = instructionCount;
-  auto currCodePointer = foundFrame->PC;
-  // adjust the code pointer by the offset
-  currCodePointer += offset;
+		uint64_t actualCount = instructionCount;
+		auto currCodePointer = foundFrame->PC;
+		// adjust the code pointer by the offset
+		currCodePointer += offset;
 
-  // the Disassemble request expects the EXACT number of instructions requested, so we need to fill in the gaps with "<INVALID>"
-  auto add_invalid_inst_to_response = [&] (size_t count) {
-    for (size_t i = 0; i < count; i++) {
-      auto instruction = dap::DisassembledInstruction();
-      instruction.instruction = "<INVALID>";
-      instruction.address = StringFormat("%p", currCodePointer);
-      response.instructions.push_back(instruction);
-      currCodePointer++;
-    }
-  };
-  // now check to see if we've gone too far forward or back
-  if (currCodePointer < Code){
+		// the Disassemble request expects the EXACT number of instructions requested, so we need to fill in the gaps with "<INVALID>"
+		auto add_invalid_inst_to_response = [&](size_t count)
+		{
+			for (size_t i = 0; i < count; i++)
+			{
+				auto instruction = dap::DisassembledInstruction();
+				instruction.instruction = "<INVALID>";
+				instruction.address = StringFormat("%p", currCodePointer);
+				response.instructions.push_back(instruction);
+				currCodePointer++;
+			}
+		};
+		// now check to see if we've gone too far forward or back
+		if (currCodePointer < Code)
+		{
 
-    size_t diff = int(Code - currCodePointer);
-    if (diff > instructionCount){
-      diff = instructionCount;
-    }
-    // populate the response instructions with "<INVALID>" for the instructions that are before the start of the function
-    add_invalid_inst_to_response(diff);
-    actualCount = instructionCount - diff < 0 ? 0 : instructionCount - diff;
-    if (actualCount == 0){
-      return response;
-    }
-  } else if (currCodePointer > Code + func->CodeSize){
-    add_invalid_inst_to_response(instructionCount);
-    return response;
-  }
-  int diff = int(currCodePointer - Code);
-  int truncatedCodeSize = func->CodeSize - diff;
-  if (actualCount > truncatedCodeSize){
-    actualCount = truncatedCodeSize;
-  }
-  // we need to create a temporary FILE* to pass to Disassemble
-  // we can't use a string because Disassemble expects a FILE*
-  // assume 256 bytes per instruction
-  size_t buf_size = func->CodeSize * 256;
-  std::vector<uint8_t> buffer(buf_size);
-  FILE *f = fmemopen(buffer.data(), buf_size, "w");
-  if (!f) {
-    RETURN_DAP_ERROR("Could not create temporary file");
-  }
-  VMDisasm(f, currCodePointer, (int)truncatedCodeSize, func, (uint64_t)currCodePointer);
-  // close the file
-  fclose(f);
-  // now we can read the disassembled code from CodeBytes
-  std::string disassembly = std::string(buffer.begin(), std::find(buffer.begin(), buffer.end(),0));
-  // split it into lines
-  auto lines = Split(disassembly, "\n");
-  int i = 0;
-  dap::optional<dap::Source> location;
-  dap::Source source;
-  if (m_pexCache->GetSourceData(func->SourceFileName.GetChars(), source)){
-    location = source;
-  }
-  for (size_t i = 0; i < lines.size(); i++) {
-    auto &line = lines[i];
-    if (i >= actualCount){
-      break;
-    }
-    if (line.empty()){
-      continue;
-    }
-    if (line.size() < 19){
-      LogError("!!!!!!Disassembly line %d too short!!!!!", i);
-      continue;
-    }
-    // lines go like this:
-    // ip        opcode   op      arg1, arg2, arg3             ;arg1,arg2,arg3 {[resolved symbol]}(optional)
-    // 00000464: 611e0201 call    [0x1319fc620],2,1            ;30,2,1  [ZTBotController.PickTeam]
-    //
-    // we want to extract the ip, the opcode, and the op
-    // we also want to remove the ip and the opcode from the line
-    auto col_pos = line.find(':');
-    auto ip = line.substr(0, col_pos);
-    auto opcode = line.substr(col_pos+2, 8);
-    auto op = line.substr(col_pos+11, 8);
-    op.erase(std::remove(op.begin(), op.end(), ' '), op.end());
-    line = line.substr(col_pos+11); // remove the ip and the opcode
-    auto comment_pos = line.find(';');
-    std::string comment;
-    if (comment_pos != std::string::npos) {
-      comment = line.substr(comment_pos + 1);
-    }
-    // get the resolved_symbol if it exists
-    std::string resolved_symbol;
-    if (!comment.empty()) {
-      // find the first open bracket in the comment
-      auto open_bracket = comment.find('[');
-      if (open_bracket != std::string::npos) {
-        // find the last close bracket
-        auto close_bracket = comment.find_last_of(']');
-        if (close_bracket != std::string::npos) {
-          resolved_symbol = comment.substr(open_bracket + 1, close_bracket - open_bracket - 1);
-        }
-      }
-    }
-    auto instruction = dap::DisassembledInstruction();
-    instruction.instruction = line;
-    instruction.address = "0x" + ip;
-    instruction.column = 1;
-    instruction.line = func->PCToLine(currCodePointer);
-    instruction.instructionBytes = opcode;
-    instruction.location = location;
-    if (!resolved_symbol.empty()) {
-      instruction.symbol = resolved_symbol;
-    }
-    response.instructions.push_back(instruction);
-    currCodePointer++;
-  }
-  add_invalid_inst_to_response(instructionCount - response.instructions.size());
+			size_t diff = int(Code - currCodePointer);
+			if (diff > instructionCount)
+			{
+				diff = instructionCount;
+			}
+			// populate the response instructions with "<INVALID>" for the instructions that are before the start of the function
+			add_invalid_inst_to_response(diff);
+			actualCount = instructionCount - diff < 0 ? 0 : instructionCount - diff;
+			if (actualCount == 0)
+			{
+				return response;
+			}
+		}
+		else if (currCodePointer > Code + func->CodeSize)
+		{
+			add_invalid_inst_to_response(instructionCount);
+			return response;
+		}
+		int diff = int(currCodePointer - Code);
+		int truncatedCodeSize = func->CodeSize - diff;
+		if (actualCount > truncatedCodeSize)
+		{
+			actualCount = truncatedCodeSize;
+		}
+		// we need to create a temporary FILE* to pass to Disassemble
+		// we can't use a string because Disassemble expects a FILE*
+		// assume 256 bytes per instruction
+		size_t buf_size = func->CodeSize * 256;
+		std::vector<uint8_t> buffer(buf_size);
+		FILE *f = fmemopen(buffer.data(), buf_size, "w");
+		if (!f)
+		{
+			RETURN_DAP_ERROR("Could not create temporary file");
+		}
+		VMDisasm(f, currCodePointer, (int)truncatedCodeSize, func, (uint64_t)currCodePointer);
+		// close the file
+		fclose(f);
+		// now we can read the disassembled code from CodeBytes
+		std::string disassembly = std::string(buffer.begin(), std::find(buffer.begin(), buffer.end(), 0));
+		// split it into lines
+		auto lines = Split(disassembly, "\n");
+		int i = 0;
+		dap::optional<dap::Source> location;
+		dap::Source source;
+		if (m_pexCache->GetSourceData(func->SourceFileName.GetChars(), source))
+		{
+			location = source;
+		}
+		for (size_t i = 0; i < lines.size(); i++)
+		{
+			auto &line = lines[i];
+			if (i >= actualCount)
+			{
+				break;
+			}
+			if (line.empty())
+			{
+				continue;
+			}
+			if (line.size() < 19)
+			{
+				LogError("!!!!!!Disassembly line %d too short!!!!!", i);
+				continue;
+			}
+			// lines go like this:
+			// ip        opcode   op      arg1, arg2, arg3             ;arg1,arg2,arg3 {[resolved symbol]}(optional)
+			// 00000464: 611e0201 call    [0x1319fc620],2,1            ;30,2,1  [ZTBotController.PickTeam]
+			//
+			// we want to extract the ip, the opcode, and the op
+			// we also want to remove the ip and the opcode from the line
+			auto col_pos = line.find(':');
+			auto ip = line.substr(0, col_pos);
+			auto opcode = line.substr(col_pos + 2, 8);
+			auto op = line.substr(col_pos + 11, 8);
+			op.erase(std::remove(op.begin(), op.end(), ' '), op.end());
+			line = line.substr(col_pos + 11); // remove the ip and the opcode
+			auto comment_pos = line.find(';');
+			std::string comment;
+			if (comment_pos != std::string::npos)
+			{
+				comment = line.substr(comment_pos + 1);
+			}
+			// get the resolved_symbol if it exists
+			std::string resolved_symbol;
+			if (!comment.empty())
+			{
+				// find the first open bracket in the comment
+				auto open_bracket = comment.find('[');
+				if (open_bracket != std::string::npos)
+				{
+					// find the last close bracket
+					auto close_bracket = comment.find_last_of(']');
+					if (close_bracket != std::string::npos)
+					{
+						resolved_symbol = comment.substr(open_bracket + 1, close_bracket - open_bracket - 1);
+					}
+				}
+			}
+			auto instruction = dap::DisassembledInstruction();
+			instruction.instruction = line;
+			instruction.address = "0x" + ip;
+			instruction.column = 1;
+			instruction.line = func->PCToLine(currCodePointer);
+			instruction.instructionBytes = opcode;
+			instruction.location = location;
+			if (!resolved_symbol.empty())
+			{
+				instruction.symbol = resolved_symbol;
+			}
+			response.instructions.push_back(instruction);
+			currCodePointer++;
+		}
+		add_invalid_inst_to_response(instructionCount - response.instructions.size());
 
-  return response;
+		return response;
 #endif
-}
-}// namespace DebugServer
+	}
+} // namespace DebugServer

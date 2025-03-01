@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include "GameInterfaces.h"
 
 #include "BreakpointManager.h"
@@ -11,12 +10,12 @@
 
 namespace DebugServer
 {
-	enum StepType {
+	enum StepType
+	{
 		STEP_IN = 0,
 		STEP_OVER,
 		STEP_OUT
 	};
-
 
 	class DebugExecutionManager
 	{
@@ -39,17 +38,18 @@ namespace DebugServer
 		bool m_closed;
 
 		std::shared_ptr<dap::Session> m_session;
-		RuntimeState* m_runtimeState;
-		BreakpointManager* m_breakpointManager;
+		RuntimeState *m_runtimeState;
+		BreakpointManager *m_breakpointManager;
 
 		DebuggerState m_state = DebuggerState::kRunning;
 		uint32_t m_currentStepStackId = 0;
 		StepType m_currentStepType = StepType::STEP_IN;
-		VMFrame* m_currentStepStackFrame;
-    VMFunction* m_currentVMFunction;
+		VMFrame *m_currentStepStackFrame;
+		VMFunction *m_currentVMFunction;
+
 	public:
-		explicit DebugExecutionManager(RuntimeState* runtimeState,
-									   BreakpointManager* breakpointManager)
+		explicit DebugExecutionManager(RuntimeState *runtimeState,
+									   BreakpointManager *breakpointManager)
 			: m_closed(true), m_runtimeState(runtimeState),
 			  m_breakpointManager(breakpointManager), m_currentStepStackFrame(nullptr)
 		{

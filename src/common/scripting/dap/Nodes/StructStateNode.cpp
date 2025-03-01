@@ -7,12 +7,12 @@
 #include <common/scripting/core/symbols.h>
 
 namespace DebugServer
-{//std::string name, VMValue* value, PType* knownType
-	StructStateNode::StructStateNode(std::string name, VMValue value, PType* knownType) : m_name(name), m_value(value), m_type(knownType)
+{ // std::string name, VMValue* value, PType* knownType
+	StructStateNode::StructStateNode(std::string name, VMValue value, PType *knownType) : m_name(name), m_value(value), m_type(knownType)
 	{
 	}
 
-	bool StructStateNode::SerializeToProtocol(dap::Variable& variable)
+	bool StructStateNode::SerializeToProtocol(dap::Variable &variable)
 	{
 		variable.variablesReference = IsVMValueValid(&m_value) ? GetId() : 0;
 		variable.namedVariables = 0;
@@ -27,82 +27,99 @@ namespace DebugServer
 		{
 			typeval = typeval.substr(8, typeval.size() - 9);
 		}
-    if(!m_value.a) {
-      variable.value = StringFormat("%s <NULL>", typeval.c_str());
-    } else {
-      variable.value = StringFormat("%s (%p)", typeval.c_str(), m_value.a);
-    }
+		if (!m_value.a)
+		{
+			variable.value = StringFormat("%s <NULL>", typeval.c_str());
+		}
+		else
+		{
+			variable.value = StringFormat("%s (%p)", typeval.c_str(), m_value.a);
+		}
 		return true;
 	}
 
-	bool StructStateNode::GetChildNames(std::vector<std::string>& names)
+	bool StructStateNode::GetChildNames(std::vector<std::string> &names)
 	{
 		if (m_children.size() > 0)
 		{
-			for (auto& pair : m_children)
+			for (auto &pair : m_children)
 			{
 				names.push_back(pair.first);
 			}
 			return true;
 		}
-		auto structType = static_cast<PContainerType*>(m_type);
+		auto structType = static_cast<PContainerType *>(m_type);
 		auto it = structType->Symbols.GetIterator();
-		PSymbolTable::MapType::Pair * pair;
+		PSymbolTable::MapType::Pair *pair;
 		bool not_done;
-		char * struct_ptr = static_cast<char *>(m_value.a);
+		char *struct_ptr = static_cast<char *>(m_value.a);
 		size_t struct_size = structType->Size;
 		size_t currsize = 0;
-		while (it.NextPair(pair)){
+		while (it.NextPair(pair))
+		{
 			auto name = pair->Key.GetChars();
-			if (!pair->Value || pair->Value->MagicID != DObject::MAGIC_ID){
+			if (!pair->Value || pair->Value->MagicID != DObject::MAGIC_ID)
+			{
 				// invalid field, we won't show it
 				continue;
 			}
-			try {
-				auto field = dynamic_cast<PField*>(pair->Value);
-				if (field) {
+			try
+			{
+				auto field = dynamic_cast<PField *>(pair->Value);
+				if (field)
+				{
 					auto flags = field->Flags;
 					auto fieldSize = field->Type->Size;
 					names.push_back(name);
 					auto type = field->Type;
-					if (!struct_ptr) {
+					if (!struct_ptr)
+					{
 						m_children[name] = RuntimeState::CreateNodeForVariable(name, VMValue(), field->Type);
-					} else {
+					}
+					else
+					{
 						VMValue val;
 						if (type->isScalar())
 						{
-							switch (fieldSize){
-								case 1:
-									val = VMValue(*(uint8_t*)struct_ptr);
-									break;
-								case 2:
-									val = VMValue(*(uint16_t*)struct_ptr);
-									break;
-								case 4:
-									val = VMValue(*(uint32_t*)struct_ptr);
-									break;
-								case 8:
-									val = VMValue((void*)(*(uint64_t*)struct_ptr));
-									break;
-								default:
-									LogError("StructStateNode::GetChildNames: scalar field size not supported");
-									break;
+							switch (fieldSize)
+							{
+							case 1:
+								val = VMValue(*(uint8_t *)struct_ptr);
+								break;
+							case 2:
+								val = VMValue(*(uint16_t *)struct_ptr);
+								break;
+							case 4:
+								val = VMValue(*(uint32_t *)struct_ptr);
+								break;
+							case 8:
+								val = VMValue((void *)(*(uint64_t *)struct_ptr));
+								break;
+							default:
+								LogError("StructStateNode::GetChildNames: scalar field size not supported");
+								break;
 							}
-						} else {
-							val = VMValue((void*)struct_ptr);
+						}
+						else
+						{
+							val = VMValue((void *)struct_ptr);
 						}
 						m_children[name] = RuntimeState::CreateNodeForVariable(name, val, field->Type);
 					}
 					// increment struct_ptr by fieldSize
 					// don't increment if it's a transient field
-					if (struct_ptr && !(flags & VARF_Transient)) {
+					if (struct_ptr && !(flags & VARF_Transient))
+					{
 						currsize += fieldSize;
 						struct_ptr = struct_ptr + fieldSize;
 					}
 				}
-			} catch(...) {
 			}
-			if (currsize > struct_size) {
+			catch (...)
+			{
+			}
+			if (currsize > struct_size)
+			{
 				LogError("StructStateNode::GetChildNames: struct size exceeded, breaking");
 				break;
 			}
@@ -110,7 +127,7 @@ namespace DebugServer
 		return true;
 	}
 
-	bool StructStateNode::GetChildNode(std::string name, std::shared_ptr<StateNodeBase>& node)
+	bool StructStateNode::GetChildNode(std::string name, std::shared_ptr<StateNodeBase> &node)
 	{
 		if (m_children.empty())
 		{
