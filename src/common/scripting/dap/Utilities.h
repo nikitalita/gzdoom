@@ -32,7 +32,7 @@ namespace DebugServer
 
   inline bool CaseInsensitiveEquals(const std::string & s1, const std::string & s2)
   {
-    return std::lexicographical_compare
+    return s1.size() == s2.size() && std::equal
             (s1.begin (), s1.end (),   // source range
              s2.begin (), s2.end (),   // dest range
              [] (const unsigned char& c1, const unsigned char& c2) {

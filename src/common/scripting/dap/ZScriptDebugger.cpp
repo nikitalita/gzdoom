@@ -30,6 +30,11 @@ namespace DebugServer
 	}
 
 	void ZScriptDebugger::StartSession(std::shared_ptr<dap::Session> session) {
+    if (m_session){
+      LogError("Session is already active, ending it first!");
+      m_session->send(dap::TerminatedEvent());
+      EndSession();
+    }
 		m_closed = false;
 		m_session = session;
 		m_executionManager->Open(session);
@@ -524,7 +529,7 @@ namespace DebugServer
     auto source = request.source.value();
 		dap::SourceResponse response;
     std::string sourceContent;
-		if (m_pexCache->GetDecompiledSourceByRef(GetSourceReference(source), sourceContent)) {
+		if (m_pexCache->GetDecompiledSource(source, sourceContent)) {
       response.content = sourceContent;
 			return response;
 		}
