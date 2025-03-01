@@ -4,6 +4,7 @@
 #include <string>
 
 #include "LocalScopeStateNode.h"
+#include "RegistersScopeStateNode.h"
 
 namespace DebugServer
 {
@@ -51,12 +52,18 @@ namespace DebugServer
 		{
 			names.push_back("Local");
 		}
+    names.push_back("Registers");
 
 		return true;
 	}
 
 	bool StackFrameStateNode::GetChildNode(std::string name, std::shared_ptr<StateNodeBase>& node)
 	{
+    if (CaseInsensitiveEquals(name, "Registers"))
+    {
+        node = std::make_shared<RegistersScopeStateNode>(m_stackFrame);
+        return true;
+    }
 		auto scriptFunction = dynamic_cast<VMScriptFunction*>(m_stackFrame->Func);
 		if (scriptFunction && CaseInsensitiveEquals(name, "local"))
 		{

@@ -10,6 +10,7 @@
 #include "common/scripting/dap/GameInterfaces.h"
 #include "vm.h"
 #include <memory>
+#include <common/scripting/dap/Nodes/StatePointerNode.h>
 
 
 namespace DebugServer
@@ -163,6 +164,9 @@ namespace DebugServer
 		if (IsBasicNonPointerType(p_type) || (IsBasicType(p_type) && !p_type->isObjectPointer())){
 			return std::make_shared<ValueStateNode>(name, variable, p_type);
 		}
+    if (p_type == TypeState){
+      return std::make_shared<StatePointerNode>(name, variable, dynamic_cast<PStatePointer*>(p_type));
+    }
 		if (p_type->isClass() || p_type->isObjectPointer()){
 			return std::make_shared<ObjectStateNode>(name, variable, p_type);
 		} else if (p_type->isStruct() || p_type->isContainer()){

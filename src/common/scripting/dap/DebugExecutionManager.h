@@ -49,8 +49,8 @@ namespace DebugServer
 	public:
 		explicit DebugExecutionManager(RuntimeState* runtimeState,
 									   BreakpointManager* breakpointManager)
-			: m_runtimeState(runtimeState), m_breakpointManager(breakpointManager),
-			  m_currentStepStackFrame(nullptr), m_closed(true)
+			: m_closed(true), m_runtimeState(runtimeState),
+			  m_breakpointManager(breakpointManager), m_currentStepStackFrame(nullptr)
 		{
 		}
 

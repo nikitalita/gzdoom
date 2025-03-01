@@ -85,7 +85,7 @@ namespace DebugServer
 			return response;
 		});
 		m_session->onError([this](const char* msg) {
-			Printf(msg);
+			Printf("%s", msg);
 		});
 		m_session->registerSentHandler(
 			// After an intialize response is sent, we send an initialized event to indicate that the client can now send requests.
@@ -297,41 +297,21 @@ namespace DebugServer
 	{
 		m_projectPath = request.projectPath.value("");
 		m_projectArchive = request.projectArchive.value("");
+    m_projectSources.clear();
 		if (!request.restart.has_value())
 		{
 			m_pexCache->Clear();
 		}
-		auto thing = GetLoadedSources(dap::LoadedSourcesRequest());
-		std::filesystem::path projectPath = m_projectPath;
-		if (projectPath.empty()) {
-			RETURN_DAP_ERROR("No project path");
-		}
-		if (!std::filesystem::exists(projectPath)) {
-			RETURN_DAP_ERROR("Project path does not exist");
-		}
-		if (!std::filesystem::is_directory(projectPath)) {
-			RETURN_DAP_ERROR("Project path is not a directory");
-		}
-		for (const auto& entry : std::filesystem::recursive_directory_iterator(projectPath)) {
-			if (entry.is_regular_file()) {
-				std::string ext = entry.path().extension().string();
-				std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-				if (ext == ".zs" || ext == ".zsc" || ext == ".zc" || ext == ".acs" || ext == ".dec") {
-					std::string scriptName = entry.path().lexically_relative(projectPath);
-					if (!m_projectArchive.empty()){
-						scriptName = m_projectArchive + ":" + scriptName;
-					}
-					CheckSourceLoaded(scriptName);
-				// check if the file is named DECORATE or ACS
-				} else if (entry.path().filename() == "DECORATE" || entry.path().filename() == "ACS") {
-					std::string scriptName = entry.path().lexically_relative(projectPath);
-					if (!m_projectArchive.empty()){
-						scriptName = m_projectArchive + ":" + scriptName;
-					}
-					CheckSourceLoaded(scriptName);
-				}
-			}
-		}
+    for (auto src : request.projectSources.value(std::vector<dap::Source>())) {
+      auto ref = GetSourceReference(src);
+      if (ref < 0) { // no source ref or name, we'll ignore it
+        continue;
+      }
+      // Don't set the reference on the source or the debugger will attempt to get the source from us
+      // Just put it in the project sources
+      m_projectSources[ref] = src;
+    }
+
 		return dap::AttachResponse();
 	}
 
@@ -395,18 +375,12 @@ namespace DebugServer
 	dap::ResponseOrError<dap::SetBreakpointsResponse> ZScriptDebugger::SetBreakpoints(const dap::SetBreakpointsRequest& request)
 	{
 		dap::Source source = request.source;
-		std::filesystem::path src_path = source.path.value("");
-		src_path = src_path.lexically_relative(m_projectPath);
-		auto ref = GetScriptReference(m_projectArchive + ":" + src_path.string());
+		auto ref = GetSourceReference(source);
 		if (m_projectSources.find(ref) != m_projectSources.end()) {
-			// if (!CompareSourceModifiedTime(request.source, m_projectSources[ref])) {
-			// 	RETURN_DAP_ERROR("Setting Breakpoints failed: script has been modified after load");
-			// }
 			source = m_projectSources[ref];
 		} else if (ref > 0){
 			// It's not part of the project's imported sources, they have to get the decompiled source from us,
 			// So we set sourceReference to make the debugger request the source from us
-			// TODO: Enable this when we start loading the project's sources
 			source.sourceReference = ref;
 		}
 		return m_breakpointManager->SetBreakpoints(source, request.breakpoints.value(std::vector<dap::SourceBreakpoint>()));;
@@ -547,15 +521,17 @@ namespace DebugServer
 	}
 	dap::ResponseOrError<dap::SourceResponse> ZScriptDebugger::GetSource(const dap::SourceRequest& request)
 	{
-		if (!request.source.has_value() || !request.source.value().name.has_value()) {
-			RETURN_DAP_ERROR("No source name");
+		if (!request.source.has_value() || !request.source.value().path.has_value() || !request.source.value().sourceReference.has_value()) {
+			RETURN_DAP_ERROR("No source path or reference");
 		}
-		std::string name = request.source.value().name.value();
+    auto source = request.source.value();
 		dap::SourceResponse response;
-		if (m_pexCache->GetDecompiledSource(name, response.content)) {
+    std::string sourceContent;
+		if (m_pexCache->GetDecompiledSourceByRef(GetSourceReference(source), sourceContent)) {
+      response.content = sourceContent;
 			return response;
 		}
-		RETURN_DAP_ERROR(fmt::format("Could not find source {}", name).c_str());
+		RETURN_DAP_ERROR(fmt::format("Could not find source {}", source.name.value("")).c_str());
 	}
 	dap::ResponseOrError<dap::LoadedSourcesResponse> ZScriptDebugger::GetLoadedSources(const dap::LoadedSourcesRequest& request)
 	{

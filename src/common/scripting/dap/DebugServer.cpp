@@ -47,7 +47,7 @@ namespace DebugServer
         };
 
         auto onError = [&](const char* msg) { 
-            Printf("Server error: {}\n", msg); 
+            Printf("Server error: %s\n", msg);
         };
 
         m_server->start(port, onClientConnected, onError);

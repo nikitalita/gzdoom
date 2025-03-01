@@ -11,6 +11,7 @@ struct TT : PType{
     using TypeFlags = PType::ETypeFlags;
 };
 
+
 enum BasicType {
     BASIC_NONE,
     BASIC_uint32,
@@ -31,7 +32,8 @@ enum BasicType {
     BASIC_Color,
     BASIC_Enum,
     BASIC_StateLabel,
-    BASIC_pointer
+    BASIC_pointer,
+    BASIC_VoidPointer,
 };
 
 static inline bool IsFunctionInvoked(VMFunction* func)
@@ -91,8 +93,6 @@ static VMValue GetVMValueVar(DObject* obj, FName field, PType* type)
         if (!isFStringValid(*str))
             return VMValue();
         return VMValue(str);
-    // } else if (type->isStruct()){
-    //     return VMValue(var);
     } else if (!type->isScalar()){
         return VMValue(var);
     }
@@ -100,46 +100,120 @@ static VMValue GetVMValueVar(DObject* obj, FName field, PType* type)
     return *vmvar;
 }
 
+static VMValue TruncateVMValue(const VMValue * val, BasicType pointed_type){
+  // to make sure that it's set to 0 for all bits
+    if (!val){
+      return VMValue();
+    }
+    VMValue new_val = (void*)nullptr;
+    // use static casts instead of c-style casts
+    // VMValue is a union of different types:
+    //	union
+    //	{
+    //		int i;
+    //		void *a;
+    //		double f;
+    //		struct { int foo[2]; } biggest;
+    //		const FString *sp;
+    //	};
+    // So it's like this:
+    // new_val = static_cast<uint32_t>(val->i); // note the & operator
+    switch(pointed_type){
+      case BASIC_SpriteID:
+      case BASIC_TextureID:
+      case BASIC_Sound:
+      case BASIC_Color:
+      case BASIC_TranslationID:
+      case BASIC_uint32:
+      case BASIC_int32:
+      case BASIC_Enum:
+      case BASIC_StateLabel:
+      case BASIC_name:
+        // no need to truncate, they're all 4 byte integers
+        new_val.i = val->i;
+        case BASIC_uint16:
+            new_val.i = static_cast<uint16_t>(val->i);
+            break;
+        case BASIC_int16:
+            new_val.i = static_cast<int16_t>(val->i);
+            break;
+        case BASIC_uint8:
+            new_val.i = static_cast<uint8_t>(val->i);
+            break;
+        case BASIC_int8:
+            new_val.i = static_cast<int8_t>(val->i);
+            break;
+        case BASIC_float:
+            new_val.f = static_cast<float>(val->f);
+            break;
+        case BASIC_double:
+            new_val.f = static_cast<double>(val->f);
+            break;
+        case BASIC_bool:
+            new_val.i = static_cast<bool>(val->i);
+            break;
+        case BASIC_string:
+        case BASIC_pointer:
+        case BASIC_VoidPointer:
+            new_val = *val;
+            break;
+        default:
+            break;
+
+
+
+    }
+    return new_val;
+}
+
+static VMValue DerefVoidPointer(void * val, BasicType pointed_type)
+{
+  if (!val)
+    return VMValue();
+  switch(pointed_type){
+    case BASIC_SpriteID:
+    case BASIC_TextureID:
+    case BASIC_TranslationID:
+    case BASIC_Sound:
+    case BASIC_Color:
+    case BASIC_name:
+    case BASIC_StateLabel:
+    case BASIC_Enum:
+    case BASIC_uint32:
+      return VMValue((int)*static_cast<uint32_t*>(val));
+    case BASIC_int32:
+      return VMValue((int)*static_cast<int32_t*>(val));
+    case BASIC_uint16:
+      return VMValue((int)*static_cast<uint16_t*>(val));
+    case BASIC_int16:
+      return VMValue((int)*static_cast<int16_t*>(val));
+    case BASIC_uint8:
+      return VMValue((int)*static_cast<uint8_t*>(val));
+    case BASIC_int8:
+      return VMValue((int)*static_cast<int8_t*>(val));
+    case BASIC_float:
+      return VMValue((float)*static_cast<float*>(val));
+    case BASIC_double:
+      return VMValue((double)*static_cast<double*>(val));
+    case BASIC_bool:
+      return VMValue((bool)*static_cast<bool*>(val));
+    case BASIC_string:{
+      FString ** str = (FString**)val;
+      return VMValue(*str);
+    }
+    case BASIC_VoidPointer:
+    case BASIC_pointer:
+      return VMValue((void*)*static_cast<void**>(val));
+    default:
+      break;
+  }
+  return VMValue();
+}
+
 static VMValue DerefValue(const VMValue * val, BasicType pointed_type){
     if (!IsVMValueValid(val))
         return VMValue();
-    switch(pointed_type){
-        case BASIC_SpriteID:
-        case BASIC_TextureID:
-        case BASIC_TranslationID:
-        case BASIC_Sound:
-        case BASIC_Color:
-        case BASIC_name:
-        case BASIC_StateLabel:
-        case BASIC_Enum:
-        case BASIC_uint32:
-           return VMValue((int)*(uint32_t*)val->a);
-        case BASIC_int32:
-            return VMValue((int)*(int32_t*)val->a);
-        case BASIC_uint16:
-            return VMValue((int)*(uint16_t*)val->a);
-        case BASIC_int16:
-            return VMValue((int)*(int16_t*)val->a);
-        case BASIC_uint8:
-            return VMValue((int)*(uint8_t*)val->a);
-        case BASIC_int8:
-            return VMValue((int)*(int8_t*)val->a);
-        case BASIC_float:
-            return VMValue((float)*(float*)val->a);
-        case BASIC_double:
-            return VMValue((double)*(double*)val->a);
-        case BASIC_bool:
-            return VMValue((bool)*(bool*)val->a);
-        case BASIC_string:{
-            FString ** str = (FString**)val->a;
-            return VMValue(*str);
-        }
-        case BASIC_pointer:
-            return VMValue((void*)*(void**)val->a);
-        default:
-            break;
-    }
-    return VMValue();
+    return DerefVoidPointer(val->a, pointed_type);
 }
 
 static BasicType GetBasicType(PType* type)
@@ -176,6 +250,8 @@ static BasicType GetBasicType(PType* type)
         return BASIC_Sound;
     if (type == TypeColor)
         return BASIC_Color;
+    if (type == TypeVoidPtr)
+        return BASIC_VoidPointer;
     if (type->isPointer())
         return BASIC_pointer;
     if (type->Flags & TT::TypeFlags::TYPE_IntNotInt){

@@ -65,7 +65,7 @@ namespace DebugServer
 			return false;
 		}
 
-		if (level >= frames.size())
+		if ((size_t)level >= frames.size())
 		{
 			return false;
 		}

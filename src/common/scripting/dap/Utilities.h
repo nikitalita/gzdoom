@@ -160,10 +160,14 @@ namespace DebugServer
 		if (src.sourceReference.value(0) > 0) {
 			return static_cast<int>(src.sourceReference.value());
 		}
-		if (!src.name.has_value()) {
+		if (!src.path.has_value()) {
 			return -1;
 		}
-		return GetScriptReference(src.name.value());
+    std::string path = src.path.value();
+    if (src.origin.has_value()) {
+      path = src.origin.value() + ":" + path;
+    }
+		return GetScriptReference(path);
 	}
 
 	inline std::string GetSourceModfiedTime(const dap::Source & src) {
@@ -184,4 +188,11 @@ namespace DebugServer
 		}
 		return true;
 	}
+
+  inline std::string StringJoin(const std::vector<std::string>& strings, const char* delim) {
+    std::ostringstream imploded;
+    std::copy(strings.begin(), strings.end(),
+              std::ostream_iterator<std::string>(imploded, delim));
+    return imploded.str().substr(0, imploded.str().size() - strlen(delim));
+  }
 }
