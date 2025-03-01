@@ -23,6 +23,7 @@ namespace DebugServer
         // TODO: Refactor this
         void EmitBreakpointChangedEvent(const dap::Breakpoint &bpoint, const std::string &what);
         void EmitInstructionExecutionEvent(VMFrameStack *stack, VMReturn *ret, int numret, const VMOP *pc);
+        void EmitLogEvent(int level, const char *message);
         namespace Internal
         {
             void CommitHooks();

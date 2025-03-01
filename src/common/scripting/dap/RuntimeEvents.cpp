@@ -34,16 +34,25 @@ namespace DebugServer
 #undef EVENT_WRAPPER_IMPL
 
 
-		void EmitBreakpointChangedEvent(const dap::Breakpoint &bpoint, const std::string &what)
-		{
-			g_BreakpointChangedEvent(bpoint, what);
+		void EmitBreakpointChangedEvent(const dap::Breakpoint &bpoint, const std::string &what) {
+			if (!g_BreakpointChangedEvent.empty()) {
+				g_BreakpointChangedEvent(bpoint, what);
+			}
 		}
 		void EmitInstructionExecutionEvent(VMFrameStack *stack, VMReturn *ret, int numret, const VMOP *pc)
 		{
-			g_InstructionExecutionEvent(stack, ret, numret, pc);
+			if (!g_InstructionExecutionEvent.empty()) {
+				g_InstructionExecutionEvent(stack, ret, numret, pc);
+			}
+		}
+		void EmitLogEvent(int level, const char *msg)
+		{
+			if (!g_LogEvent.empty()) {
+				g_LogEvent(level, msg);
+			}
 		}
 
-		// TODO: implement the rest of the event emitters? (CreateStack, CleanupStack, Log)
+		// TODO: implement the rest of the event emitters? (CreateStack, CleanupStack)
 
 	}
 }
