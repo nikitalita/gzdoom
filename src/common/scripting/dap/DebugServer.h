@@ -20,6 +20,7 @@ namespace DebugServer
 		std::unique_ptr<dap::net::Server> m_server;
 		std::condition_variable cv;
 		std::mutex mutex; // guards 'terminate'
+		bool stopped;
 		bool terminate;
 		std::thread restart_thread;
 

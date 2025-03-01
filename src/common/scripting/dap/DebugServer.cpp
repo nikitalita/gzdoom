@@ -10,7 +10,7 @@ namespace DebugServer
     DebugServer::DebugServer()
     {
         terminate = false;
-        restart_thread = std::thread(std::bind(&DebugServer::runRestartThread, this));
+        stopped = false;
         debugger = std::unique_ptr<ZScriptDebugger>(new ZScriptDebugger());
     }
 
@@ -23,6 +23,9 @@ namespace DebugServer
                     { return terminate; });
             terminate = false;
             debugger->EndSession();
+            if (stopped) {
+                break;
+            }
         }
     }
 
@@ -40,6 +43,7 @@ namespace DebugServer
         {
             Stop();
         }
+        restart_thread = std::thread(std::bind(&DebugServer::runRestartThread, this));
 
         auto onClientConnected =
             [&](const std::shared_ptr<dap::ReaderWriter> &connection)
@@ -69,18 +73,21 @@ namespace DebugServer
     }
 
 		void DebugServer::Stop() {
-			std::unique_lock<std::mutex> lock(mutex);
-			terminate = true;
-			cv.notify_all();
+            {
+                std::unique_lock<std::mutex> lock(mutex);
+                terminate = true;
+                stopped = true;
+                cv.notify_all();
+            }
 			m_server->stop();
+            if (restart_thread.joinable())
+            {
+                restart_thread.join();
+            }
 		}
 
     DebugServer::~DebugServer()
     {
         Stop();
-        if (restart_thread.joinable())
-        {
-            restart_thread.join();
-        }
     }
 }
