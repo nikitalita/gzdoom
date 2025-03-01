@@ -6,6 +6,7 @@
 #include <common/objects/dobject.h>
 #include <common/utility/zstring.h>
 #include "Utilities.h"
+#include "filesystem.h"
 
 namespace DebugServer
 {
@@ -77,8 +78,9 @@ static inline bool ScriptHasQual(const std::string &scriptPath){
 }
 
 static inline std::string GetScriptWithQual(const std::string &scriptPath, const std::string &container){
-	return container + ":" + GetScriptPathNoQual(scriptPath);
+	return !container.empty() ? container + ":" + GetScriptPathNoQual(scriptPath) : scriptPath;
 }
+
 
 static inline std::string GetArchiveName(const std::string &scriptPath){
 	auto colonPos = scriptPath.find(':');
@@ -94,6 +96,16 @@ static inline std::string GetArchiveName(const std::string &scriptPath){
 		return "";
 	}
 	return fileSystem.GetResourceFileName(wadnum);
+}
+
+static inline std::string GetFullyQualifiedScriptName(const std::string &fqsn){
+	if (!ScriptHasQual(fqsn)){
+		auto archive_name = GetArchiveName(fqsn);
+		if (!archive_name.empty()){
+			return GetScriptWithQual(fqsn, archive_name);
+		}
+	}
+	return fqsn;
 }
 
 static inline bool isScriptPath(const std::string &path){
