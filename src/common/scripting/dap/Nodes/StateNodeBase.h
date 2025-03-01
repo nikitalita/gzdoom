@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../GameInterfaces.h"
+#include <common/scripting/dap/GameInterfaces.h>
 
 #include <dap/protocol.h>
 

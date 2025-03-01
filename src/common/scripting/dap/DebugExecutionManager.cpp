@@ -1,7 +1,7 @@
 #include "DebugExecutionManager.h"
 #include <thread>
 // #include "Window.h"
-#include "../vm.h"
+#include "GameInterfaces.h"
 namespace DebugServer
 {
 	// using namespace RE::BSScript::Internal;

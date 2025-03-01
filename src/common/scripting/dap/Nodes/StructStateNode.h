@@ -1,6 +1,6 @@
 #pragma once
 #if FALLOUT
-#include "../GameInterfaces.h"
+#include <common/scripting/dap/GameInterfaces.h>
 
 #include <dap/protocol.h>
 #include "StateNodeBase.h"

@@ -1,6 +1,6 @@
 #include "StackFrameStateNode.h"
 
-#include "../Utilities.h"
+#include <common/scripting/dap/Utilities.h>
 #include <string>
 
 #include "LocalScopeStateNode.h"

@@ -3767,7 +3767,7 @@ static int D_DoomMain_Internal (void)
 	while (1);
 }
 
-#include <common/scripting/vm/DAP/DebugServer.h>
+#include <common/scripting/dap/DebugServer.h>
 
 int GameMain()
 {
