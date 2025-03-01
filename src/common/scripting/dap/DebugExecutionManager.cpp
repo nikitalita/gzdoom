@@ -48,13 +48,14 @@ namespace DebugServer
 				if (!currentFrames.empty())
 				{
 					ptrdiff_t stepFrameIndex = -1;
-					const auto stepFrameIter = std::find(currentFrames.begin(), currentFrames.end(), m_currentStepStackFrame);
+          if (m_currentVMFunction && m_currentStepStackFrame->Func == m_currentVMFunction) {
+            const auto stepFrameIter = std::find(currentFrames.begin(), currentFrames.end(), m_currentStepStackFrame);
 
-					if (stepFrameIter != currentFrames.end())
-					{
-						stepFrameIndex = std::distance(currentFrames.begin(), stepFrameIter);
-					}
-
+            if (stepFrameIter != currentFrames.end())
+            {
+              stepFrameIndex = std::distance(currentFrames.begin(), stepFrameIter);
+            }
+          }
 					switch (m_currentStepType)
 					{
 					case StepType::STEP_IN:
@@ -77,7 +78,7 @@ namespace DebugServer
 				}
 			} else {
         // no more frames on stack, should continue
-        if (stack->TopFrame() == nullptr){
+        if (!stack->HasFrames()){
           shouldContinue = true;
         }
       }
@@ -91,6 +92,7 @@ namespace DebugServer
 			m_state = DebuggerState::kPaused;
 			m_currentStepStackId = 0;
 			m_currentStepStackFrame = nullptr;
+      m_currentVMFunction = nullptr;
 
 			if (m_session) {
 				m_session->send(dap::StoppedEvent{
@@ -104,6 +106,7 @@ namespace DebugServer
 			m_state = DebuggerState::kRunning;
 			m_currentStepStackId = 0;
 			m_currentStepStackFrame = nullptr;
+      m_currentVMFunction = nullptr;
 			if (m_session) {
 				m_session->send(dap::ContinuedEvent{
 				.allThreadsContinued = true,
@@ -179,7 +182,12 @@ namespace DebugServer
 		const auto stack = RuntimeState::GetStack(stackId);
 		if (stack)
 		{
-			m_currentStepStackFrame = stack->TopFrame();
+      if (stack->HasFrames()) {
+        m_currentStepStackFrame = stack->TopFrame();
+        if (m_currentStepStackFrame) {
+          m_currentVMFunction = m_currentStepStackFrame->Func;
+        }
+      }
 		}
 		else
 		{

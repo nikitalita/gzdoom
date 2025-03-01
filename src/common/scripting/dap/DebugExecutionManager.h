@@ -46,6 +46,7 @@ namespace DebugServer
 		uint32_t m_currentStepStackId = 0;
 		StepType m_currentStepType = StepType::STEP_IN;
 		VMFrame* m_currentStepStackFrame;
+    VMFunction* m_currentVMFunction;
 	public:
 		explicit DebugExecutionManager(RuntimeState* runtimeState,
 									   BreakpointManager* breakpointManager)
