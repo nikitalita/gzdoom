@@ -64,18 +64,32 @@ namespace DebugServer
 			p_type = p_type->toPointer()->PointedType;
 		}
 		if (p_type->isClass()){
-			auto classType = PType::toClass(p_type);
-			auto descriptor = classType->Descriptor;
+			// do the parent class first
 			DObject* dobject = IsVMValValidDObject(&m_value) ? static_cast<DObject*>(m_value.a) : nullptr;
-			for (auto field : descriptor->Fields){
-				auto name = field->SymbolName.GetChars();
-				if (!dobject) {
-					m_children[name] = RuntimeState::CreateNodeForVariable(name, VMValue(), field->Type);
-				} else {
-					auto child_val_ptr = GetVMValueVar(dobject, field->SymbolName, field->Type);
-					m_children[name] = RuntimeState::CreateNodeForVariable(name,child_val_ptr, field->Type);
+			auto classType = PType::toClass(p_type);
+			if (classType->ParentType){
+				auto parent = classType->ParentType;
+				auto parentName = parent->mDescriptiveName.GetChars();
+				m_children[parentName] = RuntimeState::CreateNodeForVariable(parentName, m_value, parent);
+				names.push_back(parentName);
+			}
+			auto descriptor = classType->Descriptor;
+			try {
+				for (auto field : descriptor->Fields){
+					auto name = field->SymbolName.GetChars();
+					if (!dobject) {
+						m_children[name] = RuntimeState::CreateNodeForVariable(name, VMValue(), field->Type);
+					} else {
+						auto child_val_ptr = GetVMValueVar(dobject, field->SymbolName, field->Type);
+						m_children[name] = RuntimeState::CreateNodeForVariable(name,child_val_ptr, field->Type);
+					}
+					names.push_back(name);
 				}
-				names.push_back(name);
+			} catch (CRecoverableError& e) {
+				
+				LogError("Failed to get child names for object '{}' of type {}", m_name.c_str(), p_type->mDescriptiveName.GetChars());
+				LogError("Error: {}", e.what());
+				return false;
 			}
 			return true;
 		}
