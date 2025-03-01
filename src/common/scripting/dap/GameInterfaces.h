@@ -37,16 +37,54 @@ enum BasicType {
   BASIC_VoidPointer,
 };
 
+
 static inline bool IsFunctionInvoked(VMFunction *func) {
-  return func->VarFlags & VARF_Action;
+  return func && func->VarFlags & VARF_Action;
 }
 
 static inline bool IsFunctionStatic(VMFunction *func) {
-  return func->VarFlags & VARF_Static || !(func->VarFlags & VARF_Method);
+  return func && (func->VarFlags & VARF_Static || !(func->VarFlags & VARF_Method));
 }
 
 static inline bool IsFunctionNative(VMFunction *func) {
-  return func->VarFlags & VARF_Native;
+  return func && func->VarFlags & VARF_Native;
+}
+
+static inline std::string GetIPRef(const char * qualifiedName, uint32_t PCdiff, const VMOP* PC) {
+  return StringFormat("%s+%04x:%p", qualifiedName, PCdiff, PC);
+}
+
+static inline std::string GetIPRefFromFrame(VMFrame * m_stackFrame) {
+  if (!m_stackFrame || IsFunctionNative(m_stackFrame->Func))
+    return "";
+  auto scriptFunction = static_cast<VMScriptFunction*>(m_stackFrame->Func);
+  uint32_t PCIndex = (uint32_t)(m_stackFrame->PC - scriptFunction->Code);
+  return GetIPRef(m_stackFrame->Func->QualifiedName, PCIndex * 4, m_stackFrame->PC);
+}
+
+
+static inline uint64_t GetAddrFromIPRef(const std::string &ref) {
+  auto pos = ref.find_last_of('x');
+  if (pos == std::string::npos || pos + 1 >= ref.size())
+    return 0;
+  auto addr = ref.substr(pos + 1);
+  return std::stoull(addr, nullptr, 16);
+}
+
+static inline uint32_t GetOffsetFromIPRef(const std::string &ref) {
+  auto pos = ref.find_last_of('+');
+  auto pos2 = ref.find_last_of(':');
+  if (pos == std::string::npos || pos2 == std::string::npos)
+    return 0;
+  auto offset = ref.substr(pos + 1 , pos2 - pos - 1);
+  return std::stoul(offset, nullptr, 16);
+}
+
+static inline std::string GetFuncNameFromIPRef(const std::string &ref) {
+  auto pos = ref.find_last_of('+');
+  if (pos == std::string::npos || pos + 1 >= ref.size())
+    return "";
+  return ref.substr(0, pos);
 }
 
 static inline bool IsBasicType(PType *type) {

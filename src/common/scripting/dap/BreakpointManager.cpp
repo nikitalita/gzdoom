@@ -26,6 +26,7 @@ namespace DebugServer
       RETURN_DAP_ERROR(StringFormat("SetBreakpoints: Could not find script %s in loaded sources!", scriptPath.c_str()).c_str());
     }
     // TODO: need to somehow get all the VMFunctions for a given script; right now, we just say that all breakpoints are valid if the script is loaded.
+    // possibly trawl through all the classes and see which have a SourceFileLump that equals the scriptPath?
     bool hasDebugInfo = true;
 //		if (!hasDebugInfo) {
 			// RETURN_DAP_ERROR(fmt::format("SetBreakpoints: No debug data for script {}. Ensure that `bLoadDebugInformation=1` is set under `[ZScript]` in {}", scriptName, iniName));

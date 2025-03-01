@@ -29,11 +29,16 @@ namespace DebugServer
 		if (pexCache->GetSourceData(ScriptName.c_str(), source))
 		{
 			stackFrame.source = source;
-			uint32_t lineNumber =scriptFunction->PCToLine(m_stackFrame->PC);
-			if (lineNumber)
-			{
-				stackFrame.line = lineNumber;
-			}
+      if (m_stackFrame->PC){
+        uint32_t lineNumber =scriptFunction->PCToLine(m_stackFrame->PC);
+        if (lineNumber)
+        {
+          stackFrame.line = lineNumber;
+          stackFrame.column = 1;
+        }
+//        stackFrame.instructionPointerReference = GetIPRefFromFrame(m_stackFrame);
+        stackFrame.instructionPointerReference = StringFormat("%p", m_stackFrame->PC);
+      }
 		}
 		// TODO: Something with state pointer if we can get it?
 		// if (strcmp(m_stackFrame->owningFunction->GetStateName().c_str(), "") != 0)

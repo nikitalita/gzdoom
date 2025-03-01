@@ -73,6 +73,7 @@ namespace DebugServer
 		dap::ResponseOrError<dap::VariablesResponse> GetVariables(const dap::VariablesRequest& request);
 		dap::ResponseOrError<dap::SourceResponse> GetSource(const dap::SourceRequest& request);
 		dap::ResponseOrError<dap::LoadedSourcesResponse> GetLoadedSources(const dap::LoadedSourcesRequest& request);
+    dap::ResponseOrError<dap::DisassembleResponse> Disassemble(const dap::DisassembleRequest& request);
 		// dap::Response Evaluate(const dap::SetBreakpointsRequest& request)  { return 0; }
 		// dap::Response SetVariable(const dap::SetBreakpointsRequest& request)  { return 0; }
 		// dap::Response SetVariableByExpression(const dap::SetBreakpointsRequest& request)  { return 0; }

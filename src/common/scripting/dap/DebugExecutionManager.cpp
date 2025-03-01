@@ -144,7 +144,9 @@ namespace DebugServer
     // Set m_closed to true to allow HandleInstruction to wake up.
 		m_closed = true;
     // Lock the mutex so we wait until the HandleInstruction thread is done.
+
 		std::lock_guard<std::mutex> lock(m_instructionMutex);
+    m_state = DebuggerState::kRunning;
     // Now it should be safe to end the session.
 		m_session = nullptr;
 	}
