@@ -10,7 +10,7 @@ namespace DebugServer
 	class StackStateNode : public StateNodeBase, public IStructuredState
 	{
 		uint32_t m_stackId;
-
+		std::map<size_t, std::shared_ptr<StateNodeBase>> m_children;
 	public:
 		StackStateNode(uint32_t stackId);
 

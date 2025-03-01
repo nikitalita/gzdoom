@@ -10,11 +10,12 @@ namespace DebugServer
 	class ValueStateNode : public StateNodeBase, public IProtocolVariableSerializable
 	{
 		std::string m_name;
-		const VMValue* m_variable;
-		const int m_type;
+		const VMValue m_variable;
+		PType* m_type;
 
 	public:
-		ValueStateNode(std::string name, const VMValue* variable, const int type);
+		ValueStateNode(std::string name, VMValue variable, PType* type);
 		bool SerializeToProtocol(dap::Variable& variable) override;
+		static dap::Variable ToVariable(const VMValue& m_variable, PType * m_type);
 	};
 }

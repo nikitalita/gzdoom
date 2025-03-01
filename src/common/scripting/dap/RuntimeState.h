@@ -15,16 +15,17 @@ namespace DebugServer
 
 	public:
 		static VMFrameStack * m_GlobalVMStack;
-
+		// std::shared_ptr<StateNodeBase> m_stackStateNode;
 		explicit RuntimeState(const std::shared_ptr<IdProvider>& idProvider);
-
+		void Reset();
 		bool ResolveStateByPath(std::string requestedPath, std::shared_ptr<StateNodeBase>& node);
 		bool ResolveStateById(uint32_t id, std::shared_ptr<StateNodeBase>& node);
 		bool ResolveChildrenByParentPath(std::string requestedPath, std::vector<std::shared_ptr<StateNodeBase>>& nodes);
 		bool ResolveChildrenByParentId(uint32_t id, std::vector<std::shared_ptr<StateNodeBase>>& nodes);
 
-		static std::shared_ptr<StateNodeBase> CreateNodeForVariable(std::string name, const VMValue* variable, int type);
-		
+		static std::shared_ptr<StateNodeBase> CreateNodeForVariable(std::string name, VMValue variable, PType *type);
+
+
 		static VMFrameStack * GetStack(uint32_t stackId);
 		static VMFrame* GetFrame(uint32_t stackId, uint32_t level);
 

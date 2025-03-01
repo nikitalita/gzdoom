@@ -1,55 +1,49 @@
-#if 0
 
 #include "ObjectStateNode.h"
-#include "Utilities.h"
-#include "RuntimeState.h"
-
-#include "FormMetadata.h"
-#include "MetaNode.h"
-
-
+#include "common/scripting/dap/GameInterfaces.h"
+#include <common/scripting/dap/Utilities.h>
+#include <common/scripting/dap/RuntimeState.h>
+#include <common/objects/dobject.h>
+#include <memory>
 
 namespace DebugServer
 {
 
-	ObjectStateNode::ObjectStateNode(const std::string name, RE::BSScript::Object* value, RE::BSScript::ObjectTypeInfo* asClass, const bool subView) :
+	ObjectStateNode::ObjectStateNode(const std::string name, VMValue value, PType* asClass, const bool subView) :
 		m_name(name), m_subView(subView), m_value(value), m_class(asClass)
 	{
-		if (m_value && !m_subView)
-		{
-			m_class = RE::BSTSmartPointer<RE::BSScript::ObjectTypeInfo>(m_value->GetTypeInfo());
-		}
 	}
 
 	bool ObjectStateNode::SerializeToProtocol(dap::Variable& variable)
 	{
-		variable.variablesReference = m_value ? GetId() : 0;
+		variable.variablesReference = IsVMValueValid(&m_value) ? GetId() : 0;
 		
 		variable.name = m_name;
-		variable.type = m_class->GetName();
+		variable.type = m_class->mDescriptiveName.GetChars();
 
-		if (m_value)
+		std::vector<std::string> childNames;
+		GetChildNames(childNames);
+
+		variable.namedVariables = childNames.size();
+		auto typeval = variable.type.value("");
+		// check if name begins with 'Pointer<'; if so, remove it, and the trailing '>'
+		if (typeval.size() > 9 && typeval.find("Pointer<") == 0 && typeval[typeval.size() - 1] == '>')
 		{
-			std::vector<std::string> childNames;
-			GetChildNames(childNames);
-
-			variable.namedVariables = childNames.size();
-
-			if (!m_subView)
-			{
-				auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-				const auto handle = vm->GetBoundHandle(m_value);
-
-				variable.value = StringFormat("%s (%08x)", m_class->GetName(), static_cast<uint32_t>(handle ^ 0x0000FFFF00000000));
-			}
-			else
-			{
-				variable.value = m_class->GetName();
+			typeval = typeval.substr(8, typeval.size() - 9);
+		}
+		if (!m_subView)
+		{
+			// TODO: turn this back on
+			// if(!IsVMValueValid(&m_value)) {
+			if(!m_value.a) {
+				variable.value = fmt::format("{} <NULL>", typeval);
+			} else {
+				variable.value = fmt::format("{} (0x{:08x})", typeval, (uint64_t) m_value.a);
 			}
 		}
 		else
 		{
-			variable.value = "None";
+			variable.value = typeval;
 		}
 		
 		return true;
@@ -57,135 +51,56 @@ namespace DebugServer
 
 	bool ObjectStateNode::GetChildNames(std::vector<std::string>& names)
 	{
-		if (!m_value)
+		if (m_children.size() > 0)
 		{
+			for (auto& pair : m_children)
+			{
+				names.push_back(pair.first);
+			}
 			return true;
 		}
-		
-		auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-		
-		FormID formType;
-		// TODO: get the type id elsewhere. generic "Form"s and unregistered script forms extended from built-in forms don't register here.
-		// May have to get it from the ESP. 
-		// Take a look at the getters in TESForms.h, GetFormByEditorID()?
-		bool success = vm->GetTypeIDForScriptObject((m_class->name), formType);
-		if (success && static_cast<FormType>(formType) < FORM_TYPE_MAX && formType > 0)
-		{
-			
-#if SKYRIM
-			auto form = static_cast<RE::TESForm*>(vm->GetObjectHandlePolicy2()->GetObjectForHandle(formType, vm->GetBoundHandle(m_value)));
-
-#define DEFINE_FORM_TYPE_CHECK(type)  \
-			if constexpr (meta::isRegistered<##type##>() && !std::is_same<RE::TESForm, ##type##>::value) \
-			{\
-				auto asType = form->As<##type##>(); \
-				if (asType) \
-				{ \
-					names.push_back(STRING(type)); \
-				} \
-			} \
-
-			FORM_TYPE_LIST(DEFINE_FORM_TYPE_CHECK)
-#undef DEFINE_FORM_TYPE_CHECK
-
-#else
-			auto form = static_cast<RE::TESForm*>(vm->GetObjectHandlePolicy().GetObjectForHandle(formType, vm->GetBoundHandle(m_value)));
-#define DEFINE_FORM_TYPE_CHECK(type)  \
-			if constexpr (meta::isRegistered<##type##>() && !std::is_same<RE::TESForm, ##type##>::value) \
-			{ \
-				if (static_cast<FormType>(##type##::FORM_ID) == form->GetFormType()) \
-				{ \
-					auto asType = static_cast<##type##*>(form); \
-					if (asType) \
-					{ \
-						names.push_back(STRING(type)); \
-					} \
-				} \
-			} \
-
-			FORM_TYPE_LIST(DEFINE_FORM_TYPE_CHECK)
-#undef DEFINE_FORM_TYPE_CHECK
-
-#endif
-			if (names.empty())
-			{
-				// TESForm is only used as a fallback.
-				names.push_back("RE::TESForm");
+		auto p_type = m_class;
+		if (p_type->isObjectPointer()){
+			p_type = p_type->toPointer()->PointedType;
+		}
+		if (p_type->isClass()){
+			auto classType = PType::toClass(p_type);
+			auto descriptor = classType->Descriptor;
+			DObject* dobject = IsVMValValidDObject(&m_value) ? static_cast<DObject*>(m_value.a) : nullptr;
+			for (auto field : descriptor->Fields){
+				auto name = field->SymbolName.GetChars();
+				if (!dobject) {
+					m_children[name] = RuntimeState::CreateNodeForVariable(name, VMValue(), field->Type);
+				} else {
+					auto child_val_ptr = GetVMValueVar(dobject, field->SymbolName, field->Type);
+					m_children[name] = RuntimeState::CreateNodeForVariable(name,child_val_ptr, field->Type);
+				}
+				names.push_back(name);
 			}
+			return true;
 		}
-
-		if (m_class->GetParent())
-		{
-			names.push_back("parent");
-		}
-
-		const auto variableIter = m_class->GetVariableIter();
-		for (uint32_t i = 0; i < m_class->GetNumVariables(); i++)
-		{
-			auto variable = variableIter[i];
-			names.push_back(DemangleName(variable.name.c_str()));
-		}
-
-		return true;
+		LogError("Failed to get child names for object '{}' of type {}", m_name.c_str(), p_type->mDescriptiveName.GetChars());
+		return false;
 	}
 
 	bool ObjectStateNode::GetChildNode(std::string name, std::shared_ptr<StateNodeBase>& node)
 	{
-		auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
-
-		FormID formType;
-		if (m_value && vm->GetTypeIDForScriptObject(m_class->name, formType) && static_cast<FormType>(formType) < FORM_TYPE_MAX && formType > 0)
+		if (m_children.empty())
 		{
-
-#if SKYRIM
-#define DEFINE_FORM_NODE_RETURN(type)  \
-			if (CaseInsensitiveEquals(name, STRING(type))) \
-			{\
-				auto form = static_cast<##type##*>(vm->GetObjectHandlePolicy2()->GetObjectForHandle(formType, vm->GetBoundHandle(m_value))); \
-				node = std::make_shared<MetaNode<##type##*>>(STRING(type), form); \
- 				return true; \
-			} \
-
-			FORM_TYPE_LIST(DEFINE_FORM_NODE_RETURN)
-#undef DEFINE_FORM_NODE_RETURN
-#else // FALLOUT
-#define DEFINE_FORM_NODE_RETURN(type)  \
-			if (CaseInsensitiveEquals(name, STRING(type))) \
-			{\
-				auto form = static_cast<##type##*>(vm->GetObjectHandlePolicy().GetObjectForHandle(formType, vm->GetBoundHandle(m_value))); \
-				node = std::make_shared<MetaNode<##type##*>>(STRING(type), form); \
- 				return true; \
-			} \
-
-			FORM_TYPE_LIST(DEFINE_FORM_NODE_RETURN)
-#undef DEFINE_FORM_NODE_RETURN
-#endif
-
+			std::vector<std::string> names;
+			GetChildNames(names);
 		}
-		
-		if (m_value && m_class->GetParent() && CaseInsensitiveEquals(name, "parent"))
+		if (m_children.find(name) != m_children.end())
 		{
-			node = std::make_shared<ObjectStateNode>("parent", m_value.get(), m_class->GetParent(), true);
+			node = m_children[name];
 			return true;
 		}
-		
-		const auto type = m_value->GetTypeInfo();
-
-		const auto variableIter = type->GetVariableIter();
-		for (uint32_t i = 0; i < type->GetNumVariables(); i++)
-		{
-			const auto variable = &variableIter[i];
-			const auto demangledName = DemangleName(variable->name.c_str());
-
-			if (CaseInsensitiveEquals(name, demangledName))
-			{
-				const auto variableValue = &m_value->variables[i];
-				node = RuntimeState::CreateNodeForVariable(demangledName, variableValue);
-				return true;
-			}
-		}
-
+		LogError("Failed to get child node '{}' for object '{}'", name, m_name);
 		return false;
 	}
+
+	void ObjectStateNode::Reset()
+	{
+		m_children.clear();
+	}
 }
-#endif

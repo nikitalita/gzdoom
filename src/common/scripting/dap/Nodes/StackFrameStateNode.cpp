@@ -16,19 +16,14 @@ namespace DebugServer
 	{
 		stackFrame.id = GetId();
 		dap::Source source;
-		std::string ScriptName = "<Native>";
-		// TODO: ignoring this for now, just for debugging reference
-		// check if we can cast m_stackFrame->Func to a VMScriptFunction
-		auto scriptFunction = dynamic_cast<VMScriptFunction*>(m_stackFrame->Func);
-		if (scriptFunction)
+		std::string ScriptName = " <Native>";
+		if (IsFunctionNative(m_stackFrame->Func))
 		{
-			ScriptName = scriptFunction->SourceFileName.GetChars();
-		}
-		else
-		{
-			stackFrame.name = m_stackFrame->Func->PrintableName;
+			stackFrame.name = m_stackFrame->Func->PrintableName + ScriptName;
 			return true;
 		}
+		auto scriptFunction = static_cast<VMScriptFunction*>(m_stackFrame->Func);
+		ScriptName = scriptFunction->SourceFileName.GetChars();
 		if (pexCache->GetSourceData(ScriptName.c_str(), source))
 		{
 			stackFrame.source = source;
@@ -38,14 +33,13 @@ namespace DebugServer
 				stackFrame.line = lineNumber;
 			}
 		}
-
-		auto name = std::string(m_stackFrame->Func->PrintableName);
+		// TODO: Something with state
 		// if (strcmp(m_stackFrame->owningFunction->GetStateName().c_str(), "") != 0)
 		// {
 		// 	name = StringFormat("%s (%s)", name.c_str(), m_stackFrame->owningFunction->GetStateName().c_str());
 		// }
 
-		stackFrame.name = name;
+		stackFrame.name = m_stackFrame->Func->PrintableName;
 
 		return true;
 	}

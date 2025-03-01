@@ -5,9 +5,30 @@
 #include <regex>
 #include <dap/protocol.h>
 #include <common/engine/printf.h>
-
+#include <map>
+#include <fmt/format.h>
 namespace DebugServer
 {
+
+	struct ci_less
+	{
+		// case-independent (ci) compare_less binary function
+		struct nocase_compare
+		{
+		bool operator() (const unsigned char& c1, const unsigned char& c2) const {
+			return tolower (c1) < tolower (c2); 
+		}
+		};
+		bool operator() (const std::string & s1, const std::string & s2) const {
+		return std::lexicographical_compare 
+			(s1.begin (), s1.end (),   // source range
+			s2.begin (), s2.end (),   // dest range
+			nocase_compare ());  // comparison
+		}
+	};
+	template <typename V>
+	using caseless_path_map = typename std::map<std::string, V, ci_less>;
+
 #define RETURN_DAP_ERROR(message) \
 	Printf("%s", message); \
 	return dap::Error(message);
@@ -22,6 +43,13 @@ namespace DebugServer
 		snprintf(&buf[0], size + 1, fmt, args...);
 		return buf;
 	}
+
+	template<typename... Args>
+	void LogError(const char* fmt, Args... args)
+	{
+		Printf(TEXTCOLOR_RED "%s\n", fmt::format(fmt, args...).c_str());
+	}
+
 
 	template <typename T>
 	T ByteSwap(T val)
@@ -84,7 +112,7 @@ namespace DebugServer
 	}
 
 	inline void ToLower(std::string &p_str){
-		for (int i = 0; i < p_str.size(); i++){
+		for (size_t i = 0; i < p_str.size(); i++){
 				p_str[i] = tolower(p_str[i]);
 		}
 	}
