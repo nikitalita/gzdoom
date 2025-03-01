@@ -118,6 +118,7 @@
 #include "screenjob.h"
 #include "startscreen.h"
 #include "shiftstate.h"
+#include "common/scripting/dap/DebugServer.h"
 
 #ifdef __unix__
 #include "i_system.h"  // for SHARE_DIR
@@ -130,6 +131,8 @@ EXTERN_CVAR(Int, vr_mode)
 EXTERN_CVAR(Bool, cl_customizeinvulmap)
 EXTERN_CVAR(Bool, log_vgafont)
 EXTERN_CVAR(Bool, dlg_vgafont)
+EXTERN_CVAR(Bool, vm_jit)
+EXTERN_CVAR(Bool, vm_jit_aot)
 CVAR(Int, vid_renderer, 1, 0)	// for some stupid mods which threw caution out of the window...
 
 void DrawHUD();
@@ -334,6 +337,7 @@ extern bool AppActive;
 bool playedtitlemusic;
 
 FStartScreen* StartScreen;
+std::unique_ptr<DebugServer::DebugServer> debugServer;
 
 cycle_t FrameCycles;
 
@@ -2651,6 +2655,23 @@ CUSTOM_CVAR(Int, mouse_capturemode, 1, CVAR_GLOBALCONFIG | CVAR_ARCHIVE)
 	}
 }
 
+CUSTOM_CVAR(Bool, vm_debug, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+{
+	if (vm_debug == false){
+		if (debugServer){
+			debugServer->Stop();
+			debugServer = nullptr;
+		}
+	} else {
+		// TODO: we wouldn't need to do this if we were able to recompile everything when it's enabled?
+		Printf("You must restart " GAMENAME " for this change to take effect.\n");
+		Printf("Note that enabling the debug server will disable JIT compilation.\n");
+	}
+	// TODO: save this to the config file?
+
+}
+
+CVAR(Int, vm_debug_port, 19021, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 void Mlook_ReleaseHandler()
 {
@@ -3402,9 +3423,7 @@ static int D_InitGame(const FIWADInfo* iwad_info, std::vector<std::string>& allw
 
 
 	// clean up the compiler symbols which are not needed any longer.
-  // TODO: Debugger: Make this configurable!!
-  bool debuggerEnabled = true;
-  if (!debuggerEnabled)
+  if (!vm_debug.get())
 	  RemoveUnusedSymbols();
 
 	InitActorNumsFromMapinfo();
@@ -3658,7 +3677,15 @@ static int D_DoomMain_Internal (void)
 	const char *batchout = Args->CheckValue("-errorlog");
 
 	D_DoomInit();
-	
+
+	if (vm_debug.get()) {
+		debugServer = std::make_unique<DebugServer::DebugServer>();
+		debugServer->Listen(vm_debug_port.get()->ToInt());
+		// disable vm_jit and vm_jit_aot when debugging
+		vm_jit = false;
+		vm_jit_aot = false;
+	}
+
 	// [RH] Make sure zdoom.pk3 is always loaded,
 	// as it contains magic stuff we need.
 	wad = BaseFileSearch(BASEWAD, NULL, true, GameConfig);
@@ -3770,7 +3797,6 @@ static int D_DoomMain_Internal (void)
 	while (1);
 }
 
-#include <common/scripting/dap/DebugServer.h>
 
 int GameMain()
 {
@@ -3788,8 +3814,6 @@ int GameMain()
 	C_InitCVars(0);
 	C_InstallHandlers(&cb);
 	SetConsoleNotifyBuffer();
-	auto debug_server = DebugServer::DebugServer();
-	debug_server.Listen();
 	try
 	{
 		ret = D_DoomMain_Internal();

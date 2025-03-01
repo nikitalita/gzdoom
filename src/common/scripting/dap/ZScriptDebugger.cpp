@@ -14,6 +14,8 @@
 
 #include <common/engine/filesystem.h>
 
+// This is the main class that handles the debug session and the debug requests/responses and events
+
 namespace DebugServer
 {
 	ZScriptDebugger::ZScriptDebugger()
@@ -33,7 +35,6 @@ namespace DebugServer
 		if (m_session)
 		{
 			LogError("Session is already active, ending it first!");
-			m_session->send(dap::TerminatedEvent());
 			EndSession();
 		}
 		m_closed = false;
@@ -61,6 +62,9 @@ namespace DebugServer
 	void ZScriptDebugger::EndSession()
 	{
 		m_executionManager->Close();
+		if (m_session) {
+			m_session->send(dap::TerminatedEvent());
+		}
 		m_session = nullptr;
 		m_closed = true;
 
