@@ -43,7 +43,7 @@ namespace DebugServer
 			{
 				std::vector<VMFrame *> currentFrames;
 				RuntimeState::GetStackFrames(stack, currentFrames);
-
+				// TODO: Handle granularity
 				if (!currentFrames.empty())
 				{
 					ptrdiff_t stepFrameIndex = -1;
