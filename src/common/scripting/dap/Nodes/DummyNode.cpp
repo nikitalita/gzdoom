@@ -1,7 +1,3 @@
-//
-// Created by Nikita Zatkovich on 6/26/24.
-//
-
 #include "DummyNode.h"
 
 #include <utility>
