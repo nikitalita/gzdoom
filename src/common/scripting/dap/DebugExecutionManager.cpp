@@ -5,7 +5,13 @@
 namespace DebugServer
 {
 	// using namespace RE::BSScript::Internal;
-
+	static const char * pauseReasonStrings[] = {
+		"none",
+		"step",
+		"breakpoint",
+		"paused",
+		"exception"
+	};
 	void DebugExecutionManager::HandleInstruction(VMFrameStack *stack, VMReturn *ret, int numret, const VMOP *pc)
 	{
 		std::lock_guard<std::mutex> lock(m_instructionMutex);
@@ -15,19 +21,18 @@ namespace DebugServer
 			return;
 		}
 		
-		const auto & func = stack->TopFrame()->Func;
 		bool shouldContinue = false;
 		bool shouldSendEvent = false;
-		std::string pauseReason = "";
+		pauseReason pauseReason = pauseReason::NONE;
 		DebuggerState new_state = m_state;
 
 		if (m_state == DebuggerState::kPaused)
 		{
-			pauseReason = "paused";
+			pauseReason = pauseReason::paused;
 		}
 		else if (m_state != DebuggerState::kPaused && m_breakpointManager->GetExecutionIsAtValidBreakpoint(stack, ret, numret, pc))
 		{
-			pauseReason = "breakpoint";
+			pauseReason = pauseReason::breakpoint;
 		}
 		else if (m_state == DebuggerState::kStepping && !RuntimeState::GetStack(m_currentStepStackId))
 		{
@@ -53,19 +58,19 @@ namespace DebugServer
 					switch (m_currentStepType)
 					{
 					case StepType::STEP_IN:
-						pauseReason = "step";
+						pauseReason = pauseReason::step;
 						break;
 					case StepType::STEP_OUT:
 						// If the stack exists, but the original frame is gone, we know we're in a previous frame now.
 						if (stepFrameIndex == -1)
 						{
-							pauseReason = "step";
+							pauseReason = pauseReason::step;
 						}
 						break;
 					case StepType::STEP_OVER:
 						if (stepFrameIndex <= 0)
 						{
-							pauseReason = "step";
+							pauseReason = pauseReason::step;
 						}
 						break;
 					}
@@ -73,7 +78,7 @@ namespace DebugServer
 			}
 		}
 		
-		if (!pauseReason.empty())
+		if (pauseReason != pauseReason::NONE)
 		{	
 			m_state = DebuggerState::kPaused;
 			m_currentStepStackId = 0;
@@ -81,7 +86,7 @@ namespace DebugServer
 			RuntimeState::m_GlobalVMStack = stack;
 			if (m_session) {
 				m_session->send(dap::StoppedEvent{
-					.reason = pauseReason,
+					.reason = pauseReasonStrings[(int)pauseReason],
 					.threadId = 1
 					});
 			}
@@ -105,7 +110,7 @@ namespace DebugServer
 			std::this_thread::sleep_for(100ms);
 		}
 		// If we were the thread that paused, regain focus
-		if (!pauseReason.empty()) {
+		if (pauseReason != pauseReason::NONE) {
 			// Window::RegainFocus();
 			// also reset the state
 			m_runtimeState->Reset();

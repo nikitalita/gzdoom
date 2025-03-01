@@ -42,6 +42,8 @@ namespace DebugServer
 	private:
 		PexCache* m_pexCache;
 		std::map<int, ScriptBreakpoints> m_breakpoints;
+		BreakpointInfo * m_last_seen = nullptr;
+		size_t times_seen = 0;
 
 	};
 }

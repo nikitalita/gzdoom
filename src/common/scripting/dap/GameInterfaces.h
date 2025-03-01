@@ -34,18 +34,22 @@ enum BasicType {
     BASIC_pointer
 };
 
+static inline bool IsFunctionInvoked(VMFunction* func)
+{
+    return func->VarFlags & VARF_Action;
+}
 
-static bool IsFunctionStatic(VMFunction* func)
+static inline bool IsFunctionStatic(VMFunction* func)
 {
     return func->VarFlags & VARF_Static || !(func->VarFlags & VARF_Method);
 }
 
-static bool IsFunctionNative(VMFunction* func)
+static inline bool IsFunctionNative(VMFunction* func)
 {
     return func->VarFlags & VARF_Native;
 }
 
-static bool IsBasicType(PType* type)
+static inline bool IsBasicType(PType* type)
 {
     return type->Flags & TT::TypeFlags::TYPE_Scalar;
 }
