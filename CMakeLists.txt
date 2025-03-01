@@ -278,6 +278,7 @@ else()
 	set( ALL_C_FLAGS "-ffp-contract=off" )
 
 	if ( HAVE_VULKAN )
+		message(STATUS "Vulkan support enabled")
 		set( ALL_C_FLAGS "${ALL_C_FLAGS} -DHAVE_VULKAN" )
 	endif()
 
@@ -304,7 +305,7 @@ else()
 
 
 	if( APPLE )
-		set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13")
+		set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15")
 		if( CMAKE_CXX_COMPILER_ID STREQUAL "GNU" )
 			# If we're compiling with a custom GCC on the Mac (which we know since g++-4.2 doesn't support C++11) statically link libgcc.
 			set( ALL_C_FLAGS "-static-libgcc" )

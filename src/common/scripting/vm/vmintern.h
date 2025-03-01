@@ -249,6 +249,7 @@ struct VMFrame
 {
 	VMFrame *ParentFrame;
 	VMFunction *Func;
+	const VMOP *PC = nullptr;
 	VM_UBYTE NumRegD;
 	VM_UBYTE NumRegF;
 	VM_UBYTE NumRegS;
