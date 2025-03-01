@@ -221,24 +221,15 @@ namespace DebugServer
 		m_executionManager->HandleInstruction(stack, ret, numret, pc);
 	}
 
+	// For source loaded events
 	void ZScriptDebugger::CheckSourceLoaded(const std::string &scriptName) const
 	{
-		if (!m_pexCache->HasScript(scriptName))
-		{
-			dap::Source source;
-			if (!m_pexCache->GetSourceData(scriptName, source))
-			{
-				return;
-			}
-			// TODO: Get the modified times from the unlinked objects?
-			auto ref = GetSourceReference(source);
-			if (m_projectSources.find(ref) != m_projectSources.end())
-			{
-				source = m_projectSources.at(ref);
-			}
+		auto binary = m_pexCache->GetScript(scriptName);
+		if (binary && m_session) {
 			SendEvent(dap::LoadedSourceEvent{
-				.reason = "new",
-				.source = source});
+							.reason = "new",
+							.source = binary->sourceData
+			});
 		}
 	}
 
@@ -306,16 +297,15 @@ namespace DebugServer
 		{
 			m_pexCache->Clear();
 		}
+		m_pexCache->ScanAllScripts();
 		for (auto src : request.projectSources.value(std::vector<dap::Source>()))
 		{
-			auto ref = GetSourceReference(src);
-			if (ref < 0)
+			auto binary = m_pexCache->GetScript(src);
+			if (!binary)
 			{ // no source ref or name, we'll ignore it
 				continue;
 			}
-			// Don't set the reference on the source or the debugger will attempt to get the source from us
-			// Just put it in the project sources
-			m_projectSources[ref] = src;
+			m_projectSources[binary->sourceData.sourceReference.value()] = binary->sourceData;
 		}
 
 		return dap::AttachResponse();
@@ -553,34 +543,39 @@ namespace DebugServer
 	}
 	dap::ResponseOrError<dap::LoadedSourcesResponse> ZScriptDebugger::GetLoadedSources(const dap::LoadedSourcesRequest &request)
 	{
-		dap::LoadedSourcesResponse response;
-		int lump, lastlump = 0;
-
-		while ((lump = fileSystem.FindLump("ZSCRIPT", &lastlump)) != -1)
-		{
-			dap::Source source;
-			std::string path = fileSystem.GetFileFullPath(lump).c_str();
-			int len = fileSystem.FileLength(lump);
-			if (m_pexCache->GetSourceData(path, source))
-			{
-				auto ref = GetSourceReference(source);
-				uint32_t hash = fileSystem.FileHash(lump);
-				if (hash > 0)
-				{
-					source.checksums = {{"CRC32", std::to_string(hash)}};
-				}
-				// TODO: Get the modified times from the unlinked objects?
-				if (m_projectSources.find(ref) != m_projectSources.end())
-				{
-					response.sources.push_back(m_projectSources[ref]);
-				}
-				else
-				{
-					response.sources.push_back(source);
-				}
-			}
-		}
-		return response;
+		return m_pexCache->GetLoadedSources(request);
+//		dap::LoadedSourcesResponse response;
+//		int lump, lastlump = 0;
+//		m_pexCache->ScanAllScripts();
+//		for (auto &script : m_pexCache->GetScripts())
+//		{
+//			response.sources.push_back(script.second->sourceData);
+//		}
+//		while ((lump = fileSystem.FindLump("ZSCRIPT", &lastlump)) != -1)
+//		{
+//			dap::Source source;
+//			std::string path = fileSystem.GetFileFullPath(lump).c_str();
+//			int len = fileSystem.FileLength(lump);
+//			if (m_pexCache->GetSourceData(path, source))
+//			{
+//				auto ref = GetSourceReference(source);
+//				uint32_t hash = fileSystem.FileHash(lump);
+//				if (hash > 0)
+//				{
+//					source.checksums = {{"CRC32", std::to_string(hash)}};
+//				}
+//				// TODO: Get the modified times from the unlinked objects?
+//				if (m_projectSources.find(ref) != m_projectSources.end())
+//				{
+//					response.sources.push_back(m_projectSources[ref]);
+//				}
+//				else
+//				{
+//					response.sources.push_back(source);
+//				}
+//			}
+//		}
+//		return response;
 	}
 
 	dap::ResponseOrError<dap::DisassembleResponse> ZScriptDebugger::Disassemble(const dap::DisassembleRequest &request)
