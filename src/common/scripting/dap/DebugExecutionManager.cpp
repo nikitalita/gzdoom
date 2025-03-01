@@ -117,6 +117,7 @@ namespace DebugServer
 									.reason = pauseReasonStrings[(int)pauseReason],
 									.threadId = 1});
 				}
+				// TODO: How to do this in GZDoom?
 				// Window::ReleaseFocus();
 
 			} break;
@@ -131,6 +132,7 @@ namespace DebugServer
 		if (pauseReason != pauseReason::NONE)
 		{
 			std::lock_guard<std::mutex> lock(m_instructionMutex);
+			// TODO: How to do this in GZDoom?
 			// Window::RegainFocus();
 			// also reset the state
 			m_runtimeState->Reset();
@@ -146,7 +148,6 @@ namespace DebugServer
 		std::lock_guard<std::mutex> lock(m_instructionMutex);
 		m_closed = false;
 		m_session = ses;
-//		std::lock_guard<std::mutex> lock(m_instructionMutex);
 	}
 
 	void DebugExecutionManager::Close()

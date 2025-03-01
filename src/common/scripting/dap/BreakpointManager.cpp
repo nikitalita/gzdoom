@@ -284,45 +284,4 @@ BreakpointManager::SetInstructionBreakpoints(const dap::SetInstructionBreakpoint
   RETURN_DAP_ERROR("Instruction breakpoints are not supported yet!");
 }
 
-
-
-// //TODO: WIP
-// bool BreakpointManager::CheckIfFunctionWillWaitOrExit(RE::BSScript::Internal::CodeTasklet* tasklet) {
-// 	auto& func = tasklet->topFrame->owningFunction;
-
-// 	if (func->GetIsNative())
-// 	{
-// 		return true;
-// 	}
-// 	auto realfunc = dynamic_cast<RE::BSScript::Internal::ScriptFunction*>(func.get());
-
-// 	int instNum = GetInstructionNumberForOffset(&realfunc->instructions, tasklet->topFrame->STACK_FRAME_IP);
-
-// 	std::string scriptName(tasklet->topFrame->owningObjectType->GetName());
-// 	const auto sourceReference = GetScriptReference(scriptName);
-// 	if (m_breakpoints.find(sourceReference) != m_breakpoints.end())
-// 	{
-// 		auto& scriptBreakpoints = m_breakpoints[sourceReference];
-// 		auto binary = m_pexCache->GetScript(scriptName);
-// 		if (!binary || binary->getDebugInfo().getModificationTime() != scriptBreakpoints.modificationTime) {
-// 			return true;
-// 		}
-// 		if (scriptBreakpoints.breakpoints.find(instNum) != scriptBreakpoints.breakpoints.end())
-// 		{
-
-// 			auto& breakpointInfo = scriptBreakpoints.breakpoints[instNum];
-// 			auto& debugFuncInfo = binary->getDebugInfo().getFunctionInfos()[breakpointInfo.debugFuncInfoIndex];
-// 			auto& lineNumbers = debugFuncInfo.getLineNumbers();
-// 			auto funcData = GetFunctionData(binary, debugFuncInfo.getObjectName(), debugFuncInfo.getStateName(), debugFuncInfo.getFunctionName());
-// 			auto& instructions = funcData->getInstructions();
-// 			for (int i = instNum+1; i < instructions.size(); i++) {
-// 				auto& instruction = instructions[i];
-// 				auto opcode = instruction.getOpCode();
-// 				// TODO: The rest of this
-
-// 			}
-// 		}
-// 	}
-// 	return true;
-// }
 }

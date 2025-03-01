@@ -70,7 +70,6 @@ namespace DebugServer
 			return false;
 		}
 
-		// m_children[level] = std::make_shared<StackFrameStateNode>(frames.at(level));
 		node = std::make_shared<StackFrameStateNode>(frames.at(level));
 
 		return true;

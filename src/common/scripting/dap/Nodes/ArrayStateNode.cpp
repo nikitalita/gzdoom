@@ -132,10 +132,8 @@ namespace DebugServer
 		}
 		if (m_type->isArray())
 		{
-			PArray *arraytype = static_cast<PArray *>(m_type);
 			auto element_size = m_elementType->Size;
 			VMValue element_ptr = VMValue((void *)((char *)m_value.a + (element_size * elementIndex)));
-			// TODO: fix this, this is currently just pointing to the element in the array rather than creating a new node for it
 			m_children[elidx_str] = RuntimeState::CreateNodeForVariable(std::to_string(elementIndex), DerefValue(&element_ptr, GetBasicType(m_elementType)), m_elementType);
 		}
 		else if (m_type->isDynArray())

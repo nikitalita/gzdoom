@@ -11,7 +11,7 @@
 static const FString invalidString = FString("<INVALID>");
 
 namespace DebugServer
-{ // std::string name, VMValue* value, PType* knownType
+{
   StatePointerNode::StatePointerNode(std::string name, VMValue value, PStatePointer *knownType) : m_name(name), m_value(value), m_type(knownType)
   {
   }
