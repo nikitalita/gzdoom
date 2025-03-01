@@ -3,14 +3,14 @@
 #ifndef BENEFICII_RANGE_MAP_RANGE_MAP_HPP
 #define	BENEFICII_RANGE_MAP_RANGE_MAP_HPP
 
-#include "rm_iter.h"
+#include "range_map/internal/rm_iter.h"
 #include <algorithm>
 #include <stack>
 #include <initializer_list>
 #include <memory>
 #include <utility>
 
-namespace DebugServer {
+namespace beneficii {
     
     template<class _kty, class _ty, class _compare = std::less<_kty>,
             class _alloc_type = std::allocator<range_map_item<_kty, _ty>>,
@@ -1335,7 +1335,7 @@ namespace DebugServer {
 }
 
 template<class _kty, class _ty, class _compare, class _alloc_type>
-void swap(DebugServer::range_map<_kty, _ty, _compare, _alloc_type>& A, DebugServer::range_map<_kty, _ty, _compare, _alloc_type>& B) {
+void swap(beneficii::range_map<_kty, _ty, _compare, _alloc_type>& A, beneficii::range_map<_kty, _ty, _compare, _alloc_type>& B) {
     A.swap(B);
 }
 

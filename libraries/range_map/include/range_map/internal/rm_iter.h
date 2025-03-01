@@ -7,7 +7,7 @@
 
 #include <iterator>
 
-namespace DebugServer {
+namespace beneficii {
 
     // base class for iterator
     template<class _range_map>
