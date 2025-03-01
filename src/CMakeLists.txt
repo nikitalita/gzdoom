@@ -1193,7 +1193,10 @@ set (PCH_SOURCES
 	common/scripting/dap/Protocol/struct_extensions.cpp
 	common/scripting/dap/RuntimeEvents.cpp
 	common/scripting/dap/RuntimeState.cpp
-	common/scripting/dap/ZScriptDebugger.cpp		
+	common/scripting/dap/ZScriptDebugger.cpp
+	common/scripting/dap/Nodes/RegistersScopeStateNode.cpp
+	common/scripting/dap/Nodes/StatePointerNode.cpp
+	common/scripting/dap/Nodes/DummyNode.cpp
 	utility/nodebuilder/nodebuild.cpp
 	utility/nodebuilder/nodebuild_classify_nosse2.cpp
 	utility/nodebuilder/nodebuild_events.cpp
@@ -1260,11 +1263,6 @@ set( GAME_SOURCES
 	common/filesystem/source/fs_stringpool.cpp
 	common/filesystem/source/unicode.cpp
 	common/filesystem/source/critsec.cpp
-		common/scripting/dap/Nodes/RegistersScopeStateNode.cpp
-		common/scripting/dap/Nodes/StatePointerNode.cpp
-		common/scripting/dap/Nodes/StatePointerNode.h
-		common/scripting/dap/Nodes/DummyNode.cpp
-		common/scripting/dap/Nodes/DummyNode.h
 
 )
 
