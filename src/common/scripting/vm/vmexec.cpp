@@ -64,7 +64,7 @@ void ThrowVMException(VMException *x);
 
 #if COMPGOTO
 #define OP(x)	x
-#define NEXTOP	do { pc++; unsigned op = pc->op; a = pc->a; goto *ops[op]; } while(0)
+#define NEXTOP	do { pc++; DebugServer::RuntimeEvents::EmitInstructionExecutionEvent(stack, ret, numret, pc); unsigned op = pc->op; a = pc->a; goto *ops[op]; } while(0)
 #else
 #define OP(x)	case OP_##x
 #define NEXTOP	pc++; break
