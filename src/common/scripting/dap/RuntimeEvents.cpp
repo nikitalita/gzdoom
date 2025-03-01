@@ -21,6 +21,8 @@ namespace DebugServer
                                                                                   \
 	bool UnsubscribeFrom##NAME(NAME##EventHandle handle)                          \
 	{                                                                             \
+		if (!handle)                                                              \
+			return false;                                                         \
 		return g_##NAME##Event.remove(handle);                                    \
 	}
 
@@ -40,6 +42,8 @@ namespace DebugServer
 		{
 			g_InstructionExecutionEvent(stack, ret, numret, pc);
 		}
+
+		// TODO: implement the rest of the event emitters? (CreateStack, CleanupStack, Log)
 
 	}
 }
