@@ -108,11 +108,17 @@ static inline std::string GetFullyQualifiedScriptName(const std::string &fqsn){
 	return fqsn;
 }
 
+inline std::string normalizePath(const std::string &path){
+  auto normPath = path;
+  std::replace(normPath.begin(), normPath.end(), '\\', '/');
+  return normPath;
+}
+
 static inline bool isScriptPath(const std::string &path){
 		if (path.empty()){
 			return false;
 		}
-		std::string scriptName = ToLowerCopy(path.substr(path.find_last_of('/\\') + 1));
+		std::string scriptName = ToLowerCopy(path.substr(normalizePath(path).find_last_of('/') + 1));
 		auto ext = scriptName.substr(scriptName.find_last_of('.') + 1);
 		if (!(ext == "zs" || ext == "zsc" || ext == "zc" || ext == "acs" || ext == "dec" ||
 					(scriptName == "DECORATE") ||
