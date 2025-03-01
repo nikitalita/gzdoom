@@ -48,10 +48,14 @@ namespace DebugServer
 			}
 			return true;
 		}
-		auto structType = static_cast<PContainerType *>(m_type);
+		auto structType = static_cast<PContainerType *>(
+						m_type->isPointer() ?
+						static_cast<PPointer *>(m_type)->PointedType :
+						m_type);
 		auto it = structType->Symbols.GetIterator();
 		PSymbolTable::MapType::Pair *pair;
 		bool not_done;
+		//		char *struct_ptr = static_cast<char *>(m_type->isPointer() ? DerefValue(&m_value, GetBasicType(m_type)).a : (m_value.a));
 		char *struct_ptr = static_cast<char *>(m_value.a);
 		size_t struct_size = structType->Size;
 		size_t currsize = 0;
