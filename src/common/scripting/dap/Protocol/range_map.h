@@ -13,7 +13,8 @@
 namespace DebugServer {
     
     template<class _kty, class _ty, class _compare = std::less<_kty>,
-            class _alloc_type = std::allocator<range_map_item<_kty, _ty>>>
+            class _alloc_type = std::allocator<range_map_item<_kty, _ty>>,
+										bool _allow_encaps_matching_sets = false>
     class range_map {
             
             typedef range_map<_kty, _ty, _compare, _alloc_type> _myt;
@@ -1096,13 +1097,19 @@ namespace DebugServer {
                                 || _comp(_n->_range.get_right(), (*_ins)->_range.get_right())) {
                             return _insert3(_ins, _n, _encaps);
                         }
-                        //if range is coterminous with existing range, then return it along with
+
+												//if range is coterminous with existing range, then return it along with
                         //notice of failure.
                         if(!_comp(_n->_range.get_left(), (*_ins)->_range.get_left()) 
                                 && !_comp((*_ins)->_range.get_right(), _n->_range.get_right())) {
-                            _delete_node(*_ins);
-                            *_ins = _n;
-                            return false;
+													// We allow matching sets if encapsulate is set; if not, fail
+													if(!_encaps || (_allow_encaps_matching_sets && !(!_comp((*_ins)->_range.get_left(), _n->_range.get_left())
+														 && !_comp(_n->_range.get_right(), (*_ins)->_range.get_right())))) {
+
+														_delete_node(*_ins);
+														*_ins = _n;
+														return false;
+													}
                         }
                         //with everything ruled out, we know that the range to be inserted is
                         //a sub-range of the existing range; if existing range does not
