@@ -6,17 +6,22 @@
 
 namespace DebugServer
 {
+  static const char * const LOCAL = "Local";
+  static const char * const SELF = "self";
+  static const char * const INVOKER = "invoker";
+  static const char * const STATE_POINTER = "state_pointer";
+
 	LocalScopeStateNode::LocalScopeStateNode(VMFrame* stackFrame) : m_stackFrame(stackFrame)
 	{
 	}
 
 	bool LocalScopeStateNode::SerializeToProtocol(dap::Scope& scope)
 	{
-		scope.name = "Local";
+		scope.name = LOCAL;
 		scope.expensive = false;
 
 		scope.variablesReference = GetId();
-
+    scope.presentationHint = "locals";
 		std::vector<std::string> childNames;
 		GetChildNames(childNames);
 
@@ -32,19 +37,19 @@ namespace DebugServer
 		// apparently, it's indicated by absence of VARF_Method on VMFunction::VarFlags
 		if (m_stackFrame->Func->VarFlags & VARF_Action)
 		{
-			names.push_back("self");
-			names.push_back("invoker");
-      names.push_back("state_pointer");
+			names.push_back(SELF);
+			names.push_back(INVOKER);
+      names.push_back(STATE_POINTER);
 		}
 		else if (m_stackFrame->Func->VarFlags & VARF_Method)
 		{
-			names.push_back("self");
+			names.push_back(SELF);
       // TODO: Figure out if there is a state_pointer in non-action methods?
-      // names.push_back("state_pointer");
+      // names.push_back(STATE_POINTER);
 		}
 		if (IsFunctionNative(m_stackFrame->Func))
 		{
-			// Can't introspect locals in native functions
+			// TODO: Can't introspect locals in native functions; could potentially add args?
 			return true;
 		}
 		// TODO: waiting for PR to add local/register mapping to VMFrame
@@ -63,13 +68,13 @@ namespace DebugServer
 			return true;
 		}
     int paramidx = -1;
-		if (CaseInsensitiveEquals(name, "self")){
+		if (CaseInsensitiveEquals(name, SELF)){
 			has_self = true;
       paramidx = 0;
-		} else if (CaseInsensitiveEquals(name, "invoker")){
+		} else if (CaseInsensitiveEquals(name, INVOKER)){
 			has_invoker = true;
       paramidx = 1;
-		} else if (CaseInsensitiveEquals(name, "state_pointer")){
+		} else if (CaseInsensitiveEquals(name, STATE_POINTER)){
       paramidx = 1;
       if (m_stackFrame->Func->VarFlags & VARF_Action){
         paramidx = 2;
@@ -78,17 +83,17 @@ namespace DebugServer
 		if (paramidx >= 0)
 		{
 			if (m_stackFrame->NumRegA == 0) {
-				LogError("Function {} has '{}' but no parameters", m_stackFrame->Func->QualifiedName, name);
+				LogError("Function %s has '%s' but no parameters", m_stackFrame->Func->QualifiedName, name.c_str());
 				return false;
 			} else if (m_stackFrame->NumRegA <= paramidx) {
-				LogError("Function {} has '{}' but <= {} parameters", m_stackFrame->Func->QualifiedName, name, paramidx);
+				LogError("Function %s has '%s' but <= %d parameters", m_stackFrame->Func->QualifiedName, name.c_str(), paramidx);
 				return false;
 			}
 			if (m_stackFrame->Func->Proto->ArgumentTypes.size() == 0) {
-				LogError("Function {} has '{}' but no argument types", m_stackFrame->Func->QualifiedName, name);
+				LogError("Function %s has '%s' but no argument types", m_stackFrame->Func->QualifiedName, name.c_str());
 				return false;
 			} else if (m_stackFrame->Func->Proto->ArgumentTypes.size() <= paramidx) {
-				LogError("Function {} has '{}' but <= {} argument types", m_stackFrame->Func->QualifiedName, name, paramidx);
+				LogError("Function %s has '%s' but <= %d argument types", m_stackFrame->Func->QualifiedName, name.c_str(), paramidx);
 				return false;
 			}
 			auto type = m_stackFrame->Func->Proto->ArgumentTypes[paramidx];

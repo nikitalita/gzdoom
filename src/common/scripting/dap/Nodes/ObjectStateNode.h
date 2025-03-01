@@ -16,7 +16,7 @@ namespace DebugServer
 		PType* m_class;
 		caseless_path_map<std::shared_ptr<StateNodeBase>> m_children;
 	public:
-		ObjectStateNode(std::string name, VMValue value, PType* asClass, bool subView = false);
+		ObjectStateNode(const std::string& name, VMValue value, PType* asClass, bool subView = false);
 
 		bool SerializeToProtocol(dap::Variable& variable) override;
 

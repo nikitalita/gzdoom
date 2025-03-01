@@ -4,7 +4,6 @@
 #include "Utilities.h"
 #include "RuntimeEvents.h"
 #include "GameInterfaces.h"
-#include <fmt/format.h>
 
 namespace DebugServer
 {

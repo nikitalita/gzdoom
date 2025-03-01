@@ -27,11 +27,11 @@ namespace DebugServer
 		{
 			typeval = typeval.substr(8, typeval.size() - 9);
 		}
-		if(!m_value.a) {
-			variable.value = fmt::format("{} <NULL>", typeval);
-		} else {
-			variable.value = fmt::format("{} (0x{:08x})", typeval, (uint64_t) m_value.a);
-		}
+    if(!m_value.a) {
+      variable.value = StringFormat("%s <NULL>", typeval.c_str());
+    } else {
+      variable.value = StringFormat("%s (0x%08x)", typeval.c_str(), (uint64_t) m_value.a);
+    }
 		return true;
 	}
 

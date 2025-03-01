@@ -2,6 +2,13 @@
 #include <common/scripting/dap/Utilities.h>
 #include <common/scripting/dap/RuntimeState.h>
 #include "ValueStateNode.h"
+
+static const char * const PARAMS = "Params";
+static const char * const INTS = "Ints";
+static const char * const FLOATS = "Floats";
+static const char * const STRINGS = "Strings";
+static const char * const POINTERS = "Pointers";
+
 namespace DebugServer
 {
 	RegistersScopeStateNode::RegistersScopeStateNode(VMFrame* stackFrame) : m_stackFrame(stackFrame)
@@ -26,39 +33,39 @@ namespace DebugServer
 
 	bool RegistersScopeStateNode::GetChildNames(std::vector<std::string>& names)
 	{
-		names.emplace_back("Params");
-		names.emplace_back("IntReg");
-		names.emplace_back("FloatReg");
-		names.emplace_back("StringReg");
-		names.emplace_back("PointerReg");
+		names.emplace_back(PARAMS);
+		names.emplace_back(INTS);
+		names.emplace_back(FLOATS);
+		names.emplace_back(STRINGS);
+		names.emplace_back(POINTERS);
 		return true;
 	}
 
 	bool RegistersScopeStateNode::GetChildNode(std::string name, std::shared_ptr<StateNodeBase>& node)
 	{
-    if (CaseInsensitiveEquals(name, "Params"))
+    if (CaseInsensitiveEquals(name, PARAMS))
     {
-        node = std::make_shared<ParamsRegistersNode>(m_stackFrame);
+        node = std::make_shared<ParamsRegistersNode>(name, m_stackFrame);
         return true;
     }
-    else if (CaseInsensitiveEquals(name, "IntReg"))
+    else if (CaseInsensitiveEquals(name, INTS))
     {
-        node = std::make_shared<IntRegistersNode>(m_stackFrame);
+        node = std::make_shared<IntRegistersNode>(name, m_stackFrame);
         return true;
     }
-    else if (CaseInsensitiveEquals(name, "FloatReg"))
+    else if (CaseInsensitiveEquals(name, FLOATS))
     {
-        node = std::make_shared<FloatRegistersNode>(m_stackFrame);
+        node = std::make_shared<FloatRegistersNode>(name, m_stackFrame);
         return true;
     }
-    else if (CaseInsensitiveEquals(name, "StringReg"))
+    else if (CaseInsensitiveEquals(name, STRINGS))
     {
-        node = std::make_shared<StringRegistersNode>(m_stackFrame);
+        node = std::make_shared<StringRegistersNode>(name, m_stackFrame);
         return true;
     }
-    else if (CaseInsensitiveEquals(name, "PointerReg"))
+    else if (CaseInsensitiveEquals(name, POINTERS))
     {
-        node = std::make_shared<PointerRegistersNode>(m_stackFrame);
+        node = std::make_shared<PointerRegistersNode>(name, m_stackFrame);
         return true;
     }
 
@@ -68,11 +75,11 @@ namespace DebugServer
 
 bool RegistersNode::SerializeToProtocol(dap::Variable &variable) {
 
-    variable.name = GetName() + "sReg";
-    variable.type = GetName() + " Registers";
+    variable.name = m_name;
+    variable.type = m_name + " Registers";
     // value will be the max number of registers
     auto max_num_reg = GetNumberOfRegisters();
-    variable.value = GetName() + "[" + std::to_string(max_num_reg) + "]";
+    variable.value = m_name + "[" + std::to_string(max_num_reg) + "]";
     variable.indexedVariables = max_num_reg;
     variable.variablesReference = GetId();
     return true;
@@ -95,10 +102,6 @@ bool RegistersNode::GetChildNode(std::string name, std::shared_ptr<StateNodeBase
   return true;
 }
 
-std::string PointerRegistersNode::GetName() {
-  return "Pointer";
-}
-
 int PointerRegistersNode::GetNumberOfRegisters() {
   return m_stackFrame->NumRegA;
 }
@@ -109,10 +112,6 @@ VMValue PointerRegistersNode::GetRegisterValue(int index) {
 
 PType *PointerRegistersNode::GetRegisterType(int index) {
   return TypeVoidPtr;
-}
-
-std::string StringRegistersNode::GetName() {
-  return "String";
 }
 
 int StringRegistersNode::GetNumberOfRegisters() {
@@ -127,9 +126,6 @@ PType *StringRegistersNode::GetRegisterType(int index) {
   return TypeString;
 }
 
-std::string FloatRegistersNode::GetName() {
-  return "Float";
-}
 
 int FloatRegistersNode::GetNumberOfRegisters() {
   return m_stackFrame->NumRegF;
@@ -143,9 +139,6 @@ PType *FloatRegistersNode::GetRegisterType(int index) {
   return TypeFloat64;
 }
 
-std::string IntRegistersNode::GetName() {
-  return "Int";
-}
 
 int IntRegistersNode::GetNumberOfRegisters() {
   return m_stackFrame->NumRegD;
@@ -159,9 +152,6 @@ PType *IntRegistersNode::GetRegisterType(int index) {
   return TypeSInt32;
 }
 
-std::string ParamsRegistersNode::GetName() {
-  return "Params";
-}
 
 int ParamsRegistersNode::GetNumberOfRegisters() {
   return m_stackFrame->MaxParam;
@@ -176,7 +166,7 @@ PType *ParamsRegistersNode::GetRegisterType(int index) {
 //  if (index < m_stackFrame->Func->Proto->ArgumentTypes.size()) {
 //      return m_stackFrame->Func->Proto->ArgumentTypes[index];
 //  }
-  return TypeVoidPtr; // Replace with the actual type of P
+  return TypeVoidPtr;
 }
 
 bool PointerRegistersNode::GetChildNode(std::string name, std::shared_ptr<StateNodeBase> &node) {
@@ -192,7 +182,7 @@ bool PointerRegistersNode::GetChildNode(std::string name, std::shared_ptr<StateN
 
 bool ParamsRegistersNode::SerializeToProtocol(dap::Variable &variable) {
 
-  variable.name = "ParamsReg";
+  variable.name = PARAMS;
   variable.type = "Parameter Registers";
   // value will be the max number of registers
   auto max_num_reg = GetNumberOfRegisters();
@@ -202,8 +192,8 @@ bool ParamsRegistersNode::SerializeToProtocol(dap::Variable &variable) {
   return true;
 }
 
-RegistersNode::RegistersNode(VMFrame *stackFrame)
-: m_stackFrame(stackFrame) {
+RegistersNode::RegistersNode(std::string name, VMFrame *stackFrame)
+: m_stackFrame(stackFrame), m_name(name) {
 
 }
 }
