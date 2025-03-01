@@ -10,12 +10,16 @@
 #include <range_map/range_map.h>
 #include <name.h>
 #include <shared_mutex>
+#include <vmintern.h>
 
 class PFunction;
 class PClassType;
 class PStruct;
 class VMFunction;
 class VMScriptFunction;
+
+// TODO: don't do this
+extern const VMOpInfo OpInfo[NUM_OPS];
 
 namespace DebugServer
 {
@@ -42,11 +46,26 @@ namespace DebugServer
     void populateFunctionMaps();
     std::string GetQualifiedPath() const;
   };
+	struct DisassemblyLine {
+		void* address;
+		int line = -1;
+		int ref = -1;
+		uint8_t bytesize = 4;
+		bool is_valid_bp = false;
+		std::string bytes;
+		std::string instruction;
+		std::string comment;
+		std::string pointed_symbol;
+
+	};
 
 	class PexCache
 	{
 	public:
-		using BinaryMap = std::map<int, std::shared_ptr<Binary>>;
+		using BinaryPtr = std::shared_ptr<Binary>;
+		using BinaryMap = std::map<int, BinaryPtr>;
+		using DisassemblyLinePtr = std::shared_ptr<DisassemblyLine>;
+		using DisassemblyMap = beneficii::range_map<void*, std::vector<DisassemblyLinePtr>>;
 		PexCache() = default;
 
 		bool HasScript(int scriptReference);
@@ -63,13 +82,22 @@ namespace DebugServer
 		void Clear();
 		void ScanAllScripts();
 		dap::ResponseOrError<dap::LoadedSourcesResponse> GetLoadedSources(const dap::LoadedSourcesRequest &request);
-	private:
-		using scripts_lock = std::lock_guard<std::mutex>;
+		uint64_t AddDisassemblyLines(VMScriptFunction* func, DisassemblyMap &instructions);
+		bool GetDisassemblyLines(const VMOP* address, int64_t instructionOffset, uint64_t count, std::vector<std::shared_ptr<DisassemblyLine>> & lines);
+		dap::ResponseOrError<dap::DisassembleResponse> Disassemble(const dap::DisassembleRequest &request);
 		std::shared_ptr<Binary> AddScript(const std::string &scriptPath);
 
+	private:
+		using scripts_lock = std::scoped_lock<std::recursive_mutex>;
+		BinaryPtr _AddScript(const std::string &scriptPath);
+
 		static void ScanScriptsInContainer(int baselump, BinaryMap &m_scripts, const std::string &filter = "");
-		static std::shared_ptr<Binary> makeEmptyBinary(const std::string &scriptPath);
-		std::mutex m_scriptsMutex;
+		static BinaryPtr makeEmptyBinary(const std::string &scriptPath);
+		DisassemblyMap m_disassemblyMap;
+		Binary::FunctionCodeMap m_globalCodeMap;
+		std::recursive_mutex m_scriptsMutex;
 		BinaryMap m_scripts;
+
+		uint64_t AddDisassemblyLines(VMScriptFunction *func, std::vector<std::shared_ptr<DisassemblyLine>> &lines);
 	};
 }
