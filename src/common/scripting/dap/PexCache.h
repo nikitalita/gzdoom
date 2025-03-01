@@ -24,7 +24,7 @@ namespace DebugServer
     using NameFunctionMap = std::map<FName, PFunction *>;
     using NameClassMap = std::map<FName, PClassType *>;
     using NameStructMap = std::map<FName, PStruct *>;
-		using FunctionLineMap = DebugServer::range_map<uint32_t, VMScriptFunction *>;
+		using FunctionLineMap = DebugServer::range_map<uint32_t, VMScriptFunction *, std::less<uint32_t>, std::allocator<range_map_item<uint32_t, VMScriptFunction *>>, true>;
 		using FunctionCodeMap = DebugServer::range_map<void*, VMScriptFunction *>;
     std::string archiveName;
 		std::string archivePath;
