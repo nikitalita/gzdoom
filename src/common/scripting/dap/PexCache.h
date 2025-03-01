@@ -30,6 +30,7 @@ namespace DebugServer
 		std::string archivePath;
     std::string scriptName;
     std::string scriptPath;
+		std::string compiledPath;
     std::string sourceCode;
     dap::Source sourceData;
 		int lump;
@@ -55,7 +56,6 @@ namespace DebugServer
 		std::shared_ptr<Binary> GetScript(const dap::Source &source);
 
 		std::shared_ptr<Binary> GetScript(std::string fqsn);
-		bool GetDecompiledSourceByRef(int ref, std::string &decompiledSource);
 		bool GetDecompiledSource(const dap::Source &source, std::string &decompiledSource);
 
 		bool GetDecompiledSource(const std::string &fqpn, std::string &decompiledSource);
@@ -64,10 +64,12 @@ namespace DebugServer
 		void ScanAllScripts();
 		dap::ResponseOrError<dap::LoadedSourcesResponse> GetLoadedSources(const dap::LoadedSourcesRequest &request);
 	private:
-		using scripts_lock = std::shared_lock<std::shared_mutex>;
+		using scripts_lock = std::lock_guard<std::mutex>;
+		std::shared_ptr<Binary> AddScript(const std::string &scriptPath);
+
 		static void ScanScriptsInContainer(int baselump, BinaryMap &m_scripts, const std::string &filter = "");
 		static std::shared_ptr<Binary> makeEmptyBinary(const std::string &scriptPath);
-		std::shared_mutex m_scriptsMutex;
+		std::mutex m_scriptsMutex;
 		BinaryMap m_scripts;
 	};
 }

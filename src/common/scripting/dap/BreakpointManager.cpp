@@ -7,13 +7,21 @@
 
 namespace DebugServer {
 
-int64_t GetBreakpointID(int scriptReference, int lineNumber) {
-  return (((int64_t) scriptReference) << 32) + lineNumber;
+int64_t GetBreakpointID(int scriptReference, int lineNumber, uint16_t instruction_number) {
+  return (((int64_t) scriptReference) << 32) + (instruction_number << 16) + lineNumber;
 }
 
-// std::string GetInstructionReference(const DebugInfo::FunctionInfo& finfo) {
-// 	return fmt::format("{}:{}:{}", finfo.getObjectName().asString(), finfo.getStateName().asString(), finfo.getFunctionName().asString());
-// }
+int AddInvalidBreakpoint(std::vector<dap::Breakpoint> &breakpoints, int line, int sourceRef, int &bpointCount, const std::string &reason, const dap::optional<dap::Source>& source = {}){
+	auto breakpointId = GetBreakpointID(sourceRef, line, bpointCount++);
+	breakpoints.push_back(dap::Breakpoint{
+					.id = breakpointId,
+					.line = line,
+					.message = reason,
+					.source = source,
+					.verified = false
+	});
+	return breakpointId;
+}
 
 dap::ResponseOrError<dap::SetBreakpointsResponse>
 BreakpointManager::SetBreakpoints(const dap::Source &source, const dap::SetBreakpointsRequest &request) {
@@ -21,50 +29,54 @@ BreakpointManager::SetBreakpoints(const dap::Source &source, const dap::SetBreak
   auto &srcBreakpoints = request.breakpoints.value();
   dap::SetBreakpointsResponse response;
   std::set<int> breakpointLines;
-  auto scriptPath = source.name.value("");
-  auto binary = m_pexCache->GetScript(source);
-  RETURN_COND_DAP_ERROR(!binary, StringFormat("SetBreakpoints: Could not find script %s in loaded sources!", scriptPath.c_str()).c_str());
+	int bpointCount = 0;
+	auto scriptPath = source.name.value("");
+	auto sourceRef = GetSourceReference(source);
 
-  // TODO: need to somehow get all the VMFunctions for a given script; right now, we just say that all breakpoints are valid if the script is loaded.
-  // possibly trawl through all the classes and see which have a SourceFileLump that equals the scriptPath?
-  //  bool hasDebugInfo = false;
-  //  RETURN_COND_DAP_ERROR(!hasDebugInfo, fmt::format("SetBreakpoints: No debug data for script {}. Ensure that `bLoadDebugInformation=1` is set under `[ZScript]` in {}", scriptName, iniName));
-  auto ref = GetSourceReference(source);
-  ScriptBreakpoints info{
-          .ref = ref,
-          .source = source,
-          .modificationTime = 0};
-  std::map<int, BreakpointInfo> foundBreakpoints;
-	auto addInvalidBreakpoint = [&](int line){
-		auto breakpointId = GetBreakpointID(ref, line);
-		response.breakpoints.push_back(dap::Breakpoint{
-				.id = breakpointId,
-				.line = line,
-				.source = source,
-				.verified = false
-		});
+	std::map<int, BreakpointInfo> foundBreakpoints;
+	auto addInvalidBreakpoint = [&](int line, const std::string & reason, bool shouldLog = true){
+		if (shouldLog) {
+			LogError("SetBreakpoints: %s", reason.c_str());
+		}
+		AddInvalidBreakpoint(response.breakpoints, line, sourceRef, bpointCount, reason, source);
 	};
+
+	auto binary = m_pexCache->GetScript(source);
+	if (!binary){
+		for (const auto &srcBreakpoint: srcBreakpoints) {
+			addInvalidBreakpoint(srcBreakpoint.line, StringFormat("Could not find script %s in loaded sources!", scriptPath.c_str()));
+		}
+		return response;
+	}
+	if (binary->functions.empty()) {
+		for (const auto &srcBreakpoint: srcBreakpoints) {
+			addInvalidBreakpoint(srcBreakpoint.line, StringFormat("Script %s is present but not loaded", scriptPath.c_str()));
+		}
+		return response;
+	} else if (binary->functionLineMap.empty()){
+		for (const auto &srcBreakpoint: srcBreakpoints) {
+			addInvalidBreakpoint(srcBreakpoint.line, StringFormat("No debug info found for script %s", scriptPath.c_str()));
+		}
+	}
+	ClearLineBreakpoints(sourceRef);
+
   for (const auto &srcBreakpoint: srcBreakpoints) {
-    auto foundLine = true;
     int line = static_cast<int>(srcBreakpoint.line);
     int instructionNum = -1;
-    int foundFunctionInfoIndex{-1};
-    int64_t breakpointId = -1;
+		int foundFunctionInfoIndex;
+    int64_t breakpointId;
 		auto found = binary->functionLineMap.find_ranges(line);
 		if (found.size() > 1){
-			LogError("Multiple functions found for line %d in script %s!?!?!??!?!?!??!?!?!??!!??!?!?!?!?", line, scriptPath.c_str());
-			addInvalidBreakpoint(line);
+			addInvalidBreakpoint(line, StringFormat("Multiple functions found for line %d in script %s???????", line, scriptPath.c_str()), true);
 			continue;
 		}
 		else if (found.size() == 0){
-			addInvalidBreakpoint(line);
+			addInvalidBreakpoint(line, "Invalid instruction", false);
 			continue;
 		}
 		auto func = found.top()->mapped();
-		auto funcName = func->QualifiedName;
 		if (func == nullptr || IsFunctionAbstract(func)|| func->LineInfoCount == 0) {
-			LogError("No function found for line %d in script %s", line, scriptPath.c_str());
-			addInvalidBreakpoint(line);
+			addInvalidBreakpoint(line, StringFormat("No function found for line %d in script %s", line, scriptPath.c_str()));
 			continue;
 		}
 		for (int i = 0; i < func->LineInfoCount; i++) {
@@ -75,34 +87,34 @@ BreakpointManager::SetBreakpoints(const dap::Source &source, const dap::SetBreak
 			}
 		}
 		if (instructionNum == -1) {
-			LogError("No instruction found for line %d in script %s?!?!?!?!?!?!?!", line, scriptPath.c_str());
-			addInvalidBreakpoint(line);
+			addInvalidBreakpoint(line, StringFormat("No instruction found for line %d in script %s??????", line, scriptPath.c_str()));
 			continue;
 		}
 
 
-    breakpointId = GetBreakpointID(ref, line);
+    breakpointId = GetBreakpointID(sourceRef, instructionNum, bpointCount++);
+		void *instrRef = func->Code + instructionNum;
 
 		auto bpoint = BreakpointInfo{
+						.type = BreakpointInfo::Type::Line,
+						.ref = sourceRef,
 						.breakpointId = breakpointId,
 						.instructionNum = instructionNum,
 						.lineNum = line,
 						.debugFuncInfoIndex = foundFunctionInfoIndex,
+						.address = instrRef,
 						.isNative = false
 		};
-		void *instrRef = func->Code + instructionNum;
-		info.breakpoints[line] = bpoint;
-    auto bpoint_info = dap::Breakpoint{
-            .id =  dap::integer(breakpointId),
-            .instructionReference = StringFormat("%p", instrRef),
-            .line = dap::integer(line),
-//             .offset = foundLine ? dap::integer(instructionNum) : dap::optional<dap::integer>(),
-            .source = source,
-            .verified = true};
-    response.breakpoints.push_back(bpoint_info);
+		m_breakpoints[instrRef] = bpoint;
+    response.breakpoints.push_back({
+							 .id =  dap::integer(breakpointId),
+							 .instructionReference = StringFormat("%p", instrRef),
+							 .line = dap::integer(line),
+						 //.offset = foundLine ? dap::integer(instructionNum) : dap::optional<dap::integer>(),
+							 .source = source,
+							 .verified = true});
   }
 
-  m_breakpoints[ref] = info;
   return response;
 }
 
@@ -111,26 +123,34 @@ BreakpointManager::SetFunctionBreakpoints(const dap::SetFunctionBreakpointsReque
   auto &breakpoints = request.breakpoints;
   dap::SetFunctionBreakpointsResponse response;
   // each request clears the previous function breakpoints
-  m_functionBreakpoints.clear();
-  for (const auto &breakpoint: breakpoints) {
+  m_nativeFunctionBreakpoints.clear();
+	int bpointCount = 0;
+
+	for (const auto &breakpoint: breakpoints) {
     auto fullFuncName = breakpoint.name;
     // function names are `class.function`
     auto func_name_parts = Split(fullFuncName, ".");
-    RETURN_COND_DAP_ERROR(func_name_parts.size() != 2, StringFormat("SetFunctionBreakpoints: Invalid function name %s!", fullFuncName.c_str()).c_str());
+
+		if(func_name_parts.size() != 2) {
+			AddInvalidBreakpoint(response.breakpoints, 1, -1, bpointCount, StringFormat("Invalid function name %s", fullFuncName.c_str()));
+			continue;
+		}
     auto className = FName(func_name_parts[0]);
     auto functionName = FName(func_name_parts[1]);
     auto func = PClass::FindFunction(className, functionName);
-    RETURN_COND_DAP_ERROR(!func, StringFormat("SetFunctionBreakpoints: Could not find function %s in loaded sources!",
-                                              fullFuncName.c_str()).c_str());
+		if (!func) {
+			AddInvalidBreakpoint(response.breakpoints, 1, -1, bpointCount, StringFormat("Could not find function %s in loaded sources!", fullFuncName.c_str()));
+			continue;
+		}
     if (IsFunctionNative(func)) {
       auto bpoint_info = BreakpointInfo{
-              .breakpointId = GetBreakpointID(GetScriptReference(func->QualifiedName), 1),
+              .breakpointId = GetBreakpointID(GetScriptReference(func->QualifiedName), 1, 0),
               .instructionNum = 0,
               .lineNum = 1,
               .debugFuncInfoIndex = 0,
               .isNative = true
       };
-      m_functionBreakpoints[func->QualifiedName] = bpoint_info;
+      m_nativeFunctionBreakpoints[func->QualifiedName] = bpoint_info;
       response.breakpoints.push_back(dap::Breakpoint{
               .id = bpoint_info.breakpointId,
               .line = 1,
@@ -141,18 +161,27 @@ BreakpointManager::SetFunctionBreakpoints(const dap::SetFunctionBreakpointsReque
     auto scriptFunction = static_cast<VMScriptFunction *>(func);
     auto scriptName = scriptFunction->SourceFileName.GetChars();
     dap::Source source;
-    RETURN_COND_DAP_ERROR(!m_pexCache->GetSourceData(scriptName, source), StringFormat("SetFunctionBreakpoints: Could not find script %s in loaded sources!", scriptName).c_str());
+		if (!m_pexCache->GetSourceData(scriptName, source)) {
+			AddInvalidBreakpoint(response.breakpoints, 1, -1, bpointCount, StringFormat("Could not find script %s in loaded sources!", scriptName));
+			continue;
+		}
+
     auto ref = GetSourceReference(source);
-    RETURN_COND_DAP_ERROR(scriptFunction->LineInfoCount == 0, StringFormat("SetFunctionBreakpoints: Could not find line info for function %s!",
-                                    fullFuncName.c_str()).c_str());
+		if (scriptFunction->LineInfoCount == 0) {
+			AddInvalidBreakpoint(response.breakpoints, 1, ref, bpointCount, StringFormat("Could not find line info for function %s!", fullFuncName.c_str()));
+			continue;
+		}
     auto lineNum = scriptFunction->LineInfo[0].LineNumber;
     auto instructionNum = scriptFunction->LineInfo[0].InstructionIndex;
-    auto breakpointId = GetBreakpointID(ref, lineNum);
-    auto bpoint_info = BreakpointInfo{
+    auto breakpointId = GetBreakpointID(ref, instructionNum, bpointCount++);
+		void *instrRef = scriptFunction->Code + instructionNum;
+
+		auto bpoint_info = BreakpointInfo{
             .breakpointId = breakpointId,
             .instructionNum = instructionNum,
             .lineNum = lineNum,
             .debugFuncInfoIndex = 0,
+						.address = instrRef,
             .isNative = false
     };
     response.breakpoints.push_back(dap::Breakpoint{
@@ -162,7 +191,7 @@ BreakpointManager::SetFunctionBreakpoints(const dap::SetFunctionBreakpointsReque
             .source = source,
             .verified = true,
     });
-    m_functionBreakpoints[func->QualifiedName] = bpoint_info;
+		m_breakpoints[(void*)scriptFunction->Code] = bpoint_info;
   }
   return response;
 }
@@ -170,78 +199,66 @@ BreakpointManager::SetFunctionBreakpoints(const dap::SetFunctionBreakpointsReque
 void BreakpointManager::ClearBreakpoints(bool emitChanged) {
   if (emitChanged) {
     for (auto &kv: m_breakpoints) {
-      InvalidateAllBreakpointsForScript(kv.first);
+      InvalidateAllBreakpointsForScript(kv.second.ref, emitChanged);
     }
   }
   m_breakpoints.clear();
 }
 
-void BreakpointManager::InvalidateAllBreakpointsForScript(int ref) {
-  if (m_breakpoints.find(ref) != m_breakpoints.end()) {
-    return;
-  }
-  for (auto &KV: m_breakpoints[ref].breakpoints) {
+void BreakpointManager::ClearLineBreakpoints(int ref) {
+	std::vector<void*> toRemove;
+	for (auto &KV: m_breakpoints) {
+		auto bpinfo = KV.second;
+		if (bpinfo.ref != ref || bpinfo.type != BreakpointInfo::Type::Line) {
+			continue;
+		}
+		toRemove.push_back(KV.first);
+	}
+	for (auto &key: toRemove) {
+		m_breakpoints.erase(key);
+	}
+}
+
+void BreakpointManager::InvalidateAllBreakpointsForScript(int ref, bool emitChanged) {
+	std::vector<void*> toRemove;
+	dap::Source source;
+	if (emitChanged) {
+		auto binary = m_pexCache->GetCachedScript(ref);
+		if (!binary) {
+			LogError("Could not find source for script reference %d", ref);
+			source.sourceReference = ref;
+		} else {
+			source = binary->sourceData;
+		}
+	}
+  for (auto &KV: m_breakpoints) {
     auto bpinfo = KV.second;
-    RuntimeEvents::EmitBreakpointChangedEvent(dap::Breakpoint{
-                                                      .id = bpinfo.breakpointId,
-                                                      .line = bpinfo.lineNum,
-                                                      .source = m_breakpoints[ref].source,
-                                                      .verified = false},
-                                              "changed");
+		if (bpinfo.ref != ref) {
+			continue;
+		}
+		toRemove.push_back(KV.first);
+		if (emitChanged) {
+			RuntimeEvents::EmitBreakpointChangedEvent(dap::Breakpoint{
+																												.id = bpinfo.breakpointId,
+																												.line = bpinfo.lineNum,
+																												.source = source,
+																												.verified = false},
+																								"changed");
+		}
   }
-  m_breakpoints.erase(ref);
+	for (auto &key: toRemove) {
+		m_breakpoints.erase(key);
+	}
 }
 
 
 bool
 BreakpointManager::GetExecutionIsAtValidBreakpoint(VMFrameStack *stack, VMReturn *ret, int numret, const VMOP *pc) {
 #define CLEAR_AND_RETURN   m_last_seen = nullptr; return false
-  if (m_breakpoints.empty()) {
-    CLEAR_AND_RETURN;
-  }
-  auto func = stack->TopFrame()->Func;
-  if (!func) {
-    LogError("No function in stack frame");
-    CLEAR_AND_RETURN;
-  }
-  // check if we have a function breakpoint
-  if (m_functionBreakpoints.find(stack->TopFrame()->Func->QualifiedName) != m_functionBreakpoints.end()) {
-    auto bpoint_info = &m_functionBreakpoints[stack->TopFrame()->Func->QualifiedName];
-    if (HasSeenBreakpoint(bpoint_info)) {
-      return false;
-    }
-    m_last_seen = bpoint_info;
-    return true;
-  }
-
-  if (IsFunctionNative(func)) {
-    CLEAR_AND_RETURN;
-  }
-  auto scriptFunction = static_cast<VMScriptFunction *>(func);
-  auto scriptName = scriptFunction->SourceFileName.GetChars();
-  const auto sourceReference = GetScriptReference(scriptName);
-
-  if (m_breakpoints.find(sourceReference) == m_breakpoints.end()) {
-    CLEAR_AND_RETURN;
-  }
-
-  auto &scriptBreakpoints = m_breakpoints[sourceReference];
-
-  if (scriptBreakpoints.breakpoints.empty()) {
-    CLEAR_AND_RETURN;
-  }
-
-  int lineNo = -1;
-  auto ip = pc;
-  lineNo = scriptFunction->PCToLine(pc);
-  if (lineNo != -1 && scriptBreakpoints.breakpoints.find(lineNo) != scriptBreakpoints.breakpoints.end()) {
-    // we found a match, now check if we should pause
-    if (!HasSeenBreakpoint(&scriptBreakpoints.breakpoints[lineNo])){
-      m_last_seen = &scriptBreakpoints.breakpoints[lineNo];
-      return true;
-    }
-    // seen it before, don't clear and don't break again
-    return false;
+	if (!IsFunctionNative(stack->TopFrame()->Func) && m_breakpoints.find((void*)pc) != m_breakpoints.end()) {
+		return true;
+	} else if (IsFunctionNative(stack->TopFrame()->Func) && m_nativeFunctionBreakpoints.find(stack->TopFrame()->Func->QualifiedName) != m_nativeFunctionBreakpoints.end()) {
+		return true;
   }
   return CLEAR_AND_RETURN;
 #undef CLEAR_AND_RETURN

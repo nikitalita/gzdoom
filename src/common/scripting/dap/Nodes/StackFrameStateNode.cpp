@@ -30,10 +30,23 @@ namespace DebugServer
 			stackFrame.source = source;
 			if (m_stackFrame->PC)
 			{
-				uint32_t lineNumber = scriptFunction->PCToLine(m_stackFrame->PC);
-				if (lineNumber)
+				int lineNumber = scriptFunction->PCToLine(m_stackFrame->PC);
+				if (lineNumber > 0)
 				{
 					stackFrame.line = lineNumber;
+					stackFrame.column = 1;
+				} else if (lineNumber == -1 && scriptFunction->LineInfoCount > 0)
+				{
+					// end of the function, get the max line number
+					int max_line = 0;
+					for (int i = 0; i < scriptFunction->LineInfoCount; i++)
+					{
+						if (scriptFunction->LineInfo[i].LineNumber > max_line)
+						{
+							max_line = scriptFunction->LineInfo[i].LineNumber;
+						}
+					}
+					stackFrame.line = max_line + 1;
 					stackFrame.column = 1;
 				}
 				//        stackFrame.instructionPointerReference = GetIPRefFromFrame(m_stackFrame);

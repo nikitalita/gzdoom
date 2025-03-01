@@ -58,7 +58,7 @@ namespace DebugServer
 		while (it.NextPair(pair))
 		{
 			auto name = pair->Key.GetChars();
-			if (!pair->Value || pair->Value->MagicID != DObject::MAGIC_ID)
+			if (!isValidDobject(pair->Value))
 			{
 				// invalid field, we won't show it
 				continue;
