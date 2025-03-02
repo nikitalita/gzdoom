@@ -158,7 +158,6 @@ namespace DebugServer
 				}
 				else if (elementType == TypeString)
 				{
-					// TODO: make sure this actually works
 					return VMValue(&static_cast<TArray<FString> *>(m_value.a)->operator[](elementIndex));
 				}
 				else if (elementType->isPointer())
