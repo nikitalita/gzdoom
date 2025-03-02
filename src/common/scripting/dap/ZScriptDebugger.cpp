@@ -193,7 +193,7 @@ namespace DebugServer
 	{
 		dap::OutputEvent output;
 		output.category = "console";
-		output.output = StripColorCodes(msg) + "\r\n";
+		output.output = std::string(msg) + "\r\n";
 		// LogGameOutput(logEvent->severity, output.output);
 		SendEvent(output);
 	}
