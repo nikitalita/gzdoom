@@ -43,7 +43,7 @@ namespace DebugServer
 		ZScriptDebugger();
 		~ZScriptDebugger();
 		void StartSession(std::shared_ptr<dap::Session> session);
-		void EndSession();
+		void EndSession(bool sendTerminateEvent = true);
 		bool IsJustMyCode() const { return false; };
 		void SetJustMyCode(bool enable) {};
 		template <typename T, typename = IsEvent<T>>
@@ -75,7 +75,7 @@ namespace DebugServer
 		std::atomic<uint64_t> msg_counter = 0;
 		std::shared_ptr<IdProvider> m_idProvider;
 
-		std::shared_ptr<dap::Session> m_session;
+		std::shared_ptr<dap::Session> m_session = nullptr;
 		std::shared_ptr<PexCache> m_pexCache;
 		std::shared_ptr<BreakpointManager> m_breakpointManager;
 		std::shared_ptr<RuntimeState> m_runtimeState;
@@ -91,6 +91,7 @@ namespace DebugServer
 		RuntimeEvents::InstructionExecutionEventHandle m_instructionExecutionEventHandle;
 		RuntimeEvents::LogEventHandle m_logEventHandle;
 		RuntimeEvents::BreakpointChangedEventHandle m_breakpointChangedEventHandle;
+		bool m_quitting = false;
 
 		void RegisterSessionHandlers();
 		dap::Error Error(const std::string &msg);

@@ -3421,9 +3421,13 @@ static int D_InitGame(const FIWADInfo* iwad_info, std::vector<std::string>& allw
 	M_Init();
 	M_CreateGameMenus();
 
+	bool should_debug = vm_debug.get();
+	if (Args->CheckValue("-debug")) {
+		should_debug = true;
+	}
 
 	// clean up the compiler symbols which are not needed any longer.
-  if (!vm_debug.get())
+  if (!should_debug)
 	  RemoveUnusedSymbols();
 
 	InitActorNumsFromMapinfo();
@@ -3678,14 +3682,6 @@ static int D_DoomMain_Internal (void)
 
 	D_DoomInit();
 
-	if (vm_debug.get()) {
-		debugServer = std::make_unique<DebugServer::DebugServer>();
-		debugServer->Listen(vm_debug_port.get()->ToInt());
-		// disable vm_jit and vm_jit_aot when debugging
-		vm_jit = false;
-		vm_jit_aot = false;
-	}
-
 	// [RH] Make sure zdoom.pk3 is always loaded,
 	// as it contains magic stuff we need.
 	wad = BaseFileSearch(BASEWAD, NULL, true, GameConfig);
@@ -3731,6 +3727,12 @@ static int D_DoomMain_Internal (void)
 
 	// Now that we have the IWADINFO, initialize the autoload ini sections.
 	GameConfig->DoAutoloadSetup(iwad_man);
+
+	bool should_debug = vm_debug.get();
+	const char * debug_port_arg = Args->CheckValue("-debug");
+	if (debug_port_arg) {
+		should_debug = true;
+	}
 
 	// reinit from here
 
@@ -3785,6 +3787,25 @@ static int D_DoomMain_Internal (void)
 
 		D_DoAnonStats();
 		I_UpdateWindowTitle();
+
+		// Launch debug server if enabled
+		if (should_debug) {
+			debugServer = std::make_unique<DebugServer::DebugServer>();
+			int debug_port = vm_debug_port.get()->ToInt();
+			if (should_debug) {
+				if (debug_port_arg) {
+					debug_port = atoi(debug_port_arg);
+				}
+			}
+			if (debug_port > 65535 || debug_port < 0) {
+				I_FatalError("Invalid debug port %d (must be between 0 and 65535)", debug_port);
+			}
+			debugServer->Listen(debug_port);
+			// disable vm_jit and vm_jit_aot when debugging
+			vm_jit = false;
+			vm_jit_aot = false;
+		}
+
 		D_DoomLoop ();		// this only returns if a 'restart' CCMD is given.
 		// 
 		// Clean up after a restart

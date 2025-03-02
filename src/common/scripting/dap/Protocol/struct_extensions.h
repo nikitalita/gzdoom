@@ -29,9 +29,6 @@ namespace dap
     optional<string> projectPath;
     optional<string> projectArchive;
     optional<array<Source>> projectSources;
-    optional<object> mo2Config;
-    optional<string> XSELoaderPath;
-    optional<array<string>> args;
   };
 
   DAP_DECLARE_STRUCT_TYPEINFO(PDSAttachRequest);

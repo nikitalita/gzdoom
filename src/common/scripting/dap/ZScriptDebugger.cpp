@@ -35,7 +35,7 @@ namespace DebugServer
 		if (m_session)
 		{
 			LogError("Session is already active, ending it first!");
-			EndSession();
+			EndSession(false);
 		}
 		m_closed = false;
 		m_session = session;
@@ -59,10 +59,10 @@ namespace DebugServer
 
 		RegisterSessionHandlers();
 	}
-	void ZScriptDebugger::EndSession()
+	void ZScriptDebugger::EndSession(bool sendTerminateEvent)
 	{
 		m_executionManager->Close();
-		if (m_session) {
+		if (m_session && sendTerminateEvent) {
 			m_session->send(dap::TerminatedEvent());
 		}
 		m_session = nullptr;
@@ -80,6 +80,9 @@ namespace DebugServer
 		m_projectPath = "";
 		m_projectSources.clear();
 		m_breakpointManager->ClearBreakpoints();
+		if (m_quitting) {
+			throw CExitEvent(0);
+		}
 	}
 
 	void ZScriptDebugger::RegisterSessionHandlers()
@@ -103,9 +106,12 @@ namespace DebugServer
 
 		// The Disconnect request is sent by the client before it disconnects from the server.
 		// https://microsoft.github.io/debug-adapter-protocol/specification#Requests_Disconnect
-		m_session->registerHandler([this](const dap::DisconnectRequest &)
+		m_session->registerHandler([this](const dap::DisconnectRequest &request)
 								   {
 			// Client wants to disconnect.
+			if (request.terminateDebuggee.value(false)) {
+				m_quitting = true;
+			}
 			return dap::DisconnectResponse{}; });
 		m_session->registerHandler([this](const dap::PDSLaunchRequest &request)
 								   { return Launch(request); });
@@ -273,6 +279,7 @@ namespace DebugServer
 		response.supportsDisassembleRequest = true;
 		response.supportsSteppingGranularity = true;
 #endif
+		response.supportTerminateDebuggee = true;
 		return response;
 	}
 
@@ -294,8 +301,16 @@ namespace DebugServer
 
 	dap::ResponseOrError<dap::AttachResponse> ZScriptDebugger::Attach(const dap::PDSAttachRequest &request)
 	{
+		// get basename of projectArchive
+		auto basename = request.projectArchive.value("");
+		auto pos = basename.find_last_of("/\\");
+		if (pos != std::string::npos)
+		{
+			basename = basename.substr(pos + 1);
+		}
+
 		m_projectPath = request.projectPath.value("");
-		m_projectArchive = request.projectArchive.value("");
+		m_projectArchive = basename;
 		m_projectSources.clear();
 		if (!request.restart.has_value())
 		{

@@ -31,10 +31,10 @@ namespace DebugServer
 
     bool DebugServer::Listen(int port)
     {
-				if (!port)
-				{
-					return false;
-				}
+	    if (!port)
+	    {
+		    return false;
+	    }
         if (!m_server)
         {
             m_server = dap::net::Server::create();
@@ -60,6 +60,7 @@ namespace DebugServer
                     terminate = true;
                     cv.notify_all();
                 });
+            Printf("DAP Client connected\n");
             debugger->StartSession(sess);
         };
 
