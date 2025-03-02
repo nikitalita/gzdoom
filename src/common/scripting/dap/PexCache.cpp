@@ -399,7 +399,7 @@ int findFunctionDeclaration(const std::shared_ptr<Binary> &source, const VMScrip
   	return 0;
 }
 
-std::shared_ptr<DisassemblyLine> PexCache::make_instruction(VMScriptFunction *func, int ref,
+std::shared_ptr<DisassemblyLine> PexCache::MakeInstruction(VMScriptFunction *func, int ref,
                                                             const std::string &instruction_text,
                                                             const std::string &opcode, const std::string &comment,
                                                             unsigned long long ipnum, const std::string &pointed_symbol) {
@@ -549,7 +549,7 @@ uint64_t PexCache::AddDisassemblyLines(VMScriptFunction* func, DisassemblyMap &i
 		auto ipnum = std::stoull(ipStr, nullptr, 16);
 
 		auto instruction = std::make_shared<DisassemblyLine>();
-		instruction = make_instruction(func, ref, line.substr(col_pos + 11), opcode, comment, ipnum, resolved_symbol);
+		instruction = MakeInstruction(func, ref, line.substr(col_pos + 11), opcode, comment, ipnum, resolved_symbol);
 		if (instruction->line > -1) {
 			min_line = std::min(min_line, instruction->line);
 		} else {
@@ -568,7 +568,7 @@ uint64_t PexCache::AddDisassemblyLines(VMScriptFunction* func, DisassemblyMap &i
 				lines_vec.push_back(instruction);
 				currCodePointer++;
 				
-				instruction = make_instruction(func, ref, "--", StringFormat("%02X%02X%02X%02X", currCodePointer->op, currCodePointer->a, currCodePointer->b, currCodePointer->c),
+				instruction = MakeInstruction(func, ref, "--", StringFormat("%02X%02X%02X%02X", currCodePointer->op, currCodePointer->a, currCodePointer->b, currCodePointer->c),
 				                               StringFormat("; jmp %08X", currCodePointer->i24),
 				                               ipnum + 4, resolved_symbol);
 				min_line = std::min(min_line, instruction->line);
@@ -711,67 +711,6 @@ bool PexCache::GetDisassemblyLines(const VMOP* address, int64_t instructionOffse
 	}
   return true;
 }
-
-dap::ResponseOrError<dap::DisassembleResponse> PexCache::Disassemble(const dap::DisassembleRequest &request) {
-
-#if defined(_WIN32) || defined(_WIN64)
-	RETURN_DAP_ERROR("Disassemble not supported on Windows");
-#else
-	auto ref = request.memoryReference;
-	// ref is in the format "0x12345678", we need to convert it to a number
-	if (ref.size() < 3 || ref[0] != '0' || ref[1] != 'x')
-	{
-		RETURN_DAP_ERROR("Invalid memoryReference");
-	}
-	const uint64_t req_address = std::stoull(ref.substr(2), nullptr, 16);
-	const int64_t offset = request.instructionOffset.value(0);
-	const VMOP* currCodePointer = (VMOP*)req_address;
-	auto response = dap::DisassembleResponse();
-	// the Disassemble request expects the EXACT number of instructions requested, so we need to fill in the gaps with "<INVALID>"
-	auto add_invalid_inst_to_response = [&](size_t count)
-	{
-		for (size_t i = 0; i < count; i++)
-		{
-			auto instruction = dap::DisassembledInstruction();
-			instruction.instruction = "<INVALID>";
-			instruction.address = StringFormat("%p", currCodePointer);
-			response.instructions.push_back(instruction);
-			currCodePointer++;
-		}
-	};
-
-	int64_t remaining_instructions = request.instructionCount;
-	std::vector<std::shared_ptr<DisassemblyLine>> lines;
-	GetDisassemblyLines(currCodePointer, offset, request.instructionCount, lines);
-	BinaryPtr bin;
-	std::vector<std::string> instruction_addrs;
-	for (auto &line: lines){
-		auto instruction = dap::DisassembledInstruction();
-		instruction.instruction = line->instruction;
-		instruction.address = StringFormat("%p", line->address);
-		instruction_addrs.push_back(instruction.address);
-		instruction.line = line->line;
-		if (line->line != line->endLine && line->endLine > 0) {
-			instruction.endLine = line->endLine;
-		}
-		if (line->line == 29 && line->function.find("doSomeStupidShit") != -1) {
-			int i = 0; 
-		}
-
-		// only map the source for the first instruction, or if the source location has changed
-//		if (!bin || bin->sourceData.sourceReference.value(-1) != line->ref){
-			bin = GetCachedScript(line->ref);
-			if (bin) {
-				instruction.location = bin->sourceData;
-			}
-//		}
-		instruction.instructionBytes = line->bytes;
-		response.instructions.push_back(instruction);
-	}
-	return response;
-#endif
-}
-
 }
 
 std::string DebugServer::Binary::GetQualifiedPath() const {

@@ -86,13 +86,12 @@ namespace DebugServer
 		void ScanAllScripts();
 		dap::ResponseOrError<dap::LoadedSourcesResponse> GetLoadedSources(const dap::LoadedSourcesRequest &request);
 
-		static std::shared_ptr<DisassemblyLine> make_instruction(VMScriptFunction *func, int ref,
+		static std::shared_ptr<DisassemblyLine> MakeInstruction(VMScriptFunction *func, int ref,
 		                                                         const std::string &instruction_text,
 		                                                         const std::string &opcode, const std::string &comment, unsigned long long ipnum, const std::string &pointed_symbol);
 
 		uint64_t AddDisassemblyLines(VMScriptFunction* func, DisassemblyMap &instructions);
 		bool GetDisassemblyLines(const VMOP* address, int64_t instructionOffset, uint64_t count, std::vector<std::shared_ptr<DisassemblyLine>> & lines);
-		dap::ResponseOrError<dap::DisassembleResponse> Disassemble(const dap::DisassembleRequest &request);
 		std::shared_ptr<Binary> AddScript(const std::string &scriptPath);
 
 	private:
