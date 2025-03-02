@@ -333,7 +333,7 @@ std::shared_ptr<Binary> PexCache::AddScript(const std::string &scriptPath) {
 		return response;
 	}
 
-inline bool lineIsFunctionDeclaration(const std::string &line, const std::string &function_name){
+inline bool LineIsFunctionDeclaration(const std::string &line, const std::string &function_name){
   	std::string new_line = line;
   	new_line.erase(0, new_line.find_first_not_of(" \t\n"));
   	new_line.erase(new_line.find_last_not_of(" \t\n") + 1);
@@ -368,7 +368,7 @@ inline bool lineIsFunctionDeclaration(const std::string &line, const std::string
 
 // TODO: rely on compiler information somehow instead of this
 // find the LINE that the function declaration starts on, lines starting at 1
-int findFunctionDeclaration(const std::shared_ptr<Binary> &source, const VMScriptFunction * func, int start_line_from_1){
+inline int FindFunctionDeclaration(const std::shared_ptr<Binary> &source, const VMScriptFunction * func, int start_line_from_1){
   	std::string source_code = source->sourceCode;
   	// convert source_code to lowercase
   	std::transform(source_code.begin(), source_code.end(), source_code.begin(), ::tolower);
@@ -391,7 +391,7 @@ int findFunctionDeclaration(const std::shared_ptr<Binary> &source, const VMScrip
 			auto &line = lines[i];
   		// find the line that contains the function name
   		auto func_name_pos = line.find(function_name);
-			if (func_name_pos != std::string::npos && lineIsFunctionDeclaration(lines[i], function_name)){
+			if (func_name_pos != std::string::npos && LineIsFunctionDeclaration(lines[i], function_name)){
 				
 				return i + 1;
 			}
@@ -584,7 +584,7 @@ uint64_t PexCache::AddDisassemblyLines(VMScriptFunction* func, DisassemblyMap &i
   if (source->sourceCode.empty()) {
   	GetSourceContent(source->scriptPath, source->sourceCode);
   }
-  auto func_decl_line = findFunctionDeclaration( source,func, min_line);
+  auto func_decl_line = FindFunctionDeclaration( source,func, min_line);
   if (func_decl_line > 0) {
 	  for (auto &instruction: lines_vec) {
 	  	if (instruction->line == 588 && instruction->function.find("BeginPlay") != -1) {
