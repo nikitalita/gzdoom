@@ -65,7 +65,7 @@ BreakpointManager::SetBreakpoints(const dap::Source &source, const dap::SetBreak
     int line = static_cast<int>(srcBreakpoint.line);
     int instructionNum = -1;
 		int foundFunctionInfoIndex;
-    int64_t breakpointId;
+    int64_t breakpointId = -1;
 		auto found = binary->functionLineMap.find_ranges(line);
     if (found.size() == 0){
 			addInvalidBreakpoint(line, "Invalid instruction", false);
@@ -75,8 +75,7 @@ BreakpointManager::SetBreakpoints(const dap::Source &source, const dap::SetBreak
 		while (!found.empty()) {
 			auto func = found.top()->mapped();
 			if (func == nullptr || IsFunctionAbstract(func) || func->LineInfoCount == 0) {
-				addInvalidBreakpoint(line,
-														 StringFormat("No function found for line %d in script %s", line, scriptPath.c_str()));
+				found.pop();
 				continue;
 			}
 			for (int i = 0; i < func->LineInfoCount; i++) {
@@ -87,8 +86,7 @@ BreakpointManager::SetBreakpoints(const dap::Source &source, const dap::SetBreak
 				}
 			}
 			if (instructionNum == -1) {
-				addInvalidBreakpoint(line, StringFormat("No instruction found for line %d in script %s??????", line,
-																								scriptPath.c_str()));
+				found.pop();
 				continue;
 			}
 
@@ -120,6 +118,9 @@ BreakpointManager::SetBreakpoints(const dap::Source &source, const dap::SetBreak
 			found.pop();
 			breakpointsSet++;
 		}
+  	if (breakpointId == -1) {
+  		addInvalidBreakpoint(line,StringFormat("No function found for line %d in script %s", line, scriptPath.c_str()));
+  	}
   }
 
   return response;
