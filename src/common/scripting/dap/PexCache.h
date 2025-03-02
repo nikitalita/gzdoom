@@ -44,11 +44,13 @@ namespace DebugServer
 		FunctionLineMap functionLineMap;
 		FunctionCodeMap functionCodeMap;
     void populateFunctionMaps();
+  	std::pair<int, int> GetFunctionLineRange(const VMScriptFunction *functionName);
     std::string GetQualifiedPath() const;
   };
 	struct DisassemblyLine {
 		void* address;
 		int line = -1;
+		int endLine = -1;
 		int ref = -1;
 		uint8_t bytesize = 4;
 		bool is_valid_bp = false;
@@ -56,6 +58,7 @@ namespace DebugServer
 		std::string instruction;
 		std::string comment;
 		std::string pointed_symbol;
+		std::string function;
 
 	};
 
@@ -82,6 +85,11 @@ namespace DebugServer
 		void Clear();
 		void ScanAllScripts();
 		dap::ResponseOrError<dap::LoadedSourcesResponse> GetLoadedSources(const dap::LoadedSourcesRequest &request);
+
+		static std::shared_ptr<DisassemblyLine> make_instruction(VMScriptFunction *func, int ref,
+		                                                         const std::string &instruction_text,
+		                                                         const std::string &opcode, const std::string &comment, unsigned long long ipnum, const std::string &pointed_symbol);
+
 		uint64_t AddDisassemblyLines(VMScriptFunction* func, DisassemblyMap &instructions);
 		bool GetDisassemblyLines(const VMOP* address, int64_t instructionOffset, uint64_t count, std::vector<std::shared_ptr<DisassemblyLine>> & lines);
 		dap::ResponseOrError<dap::DisassembleResponse> Disassemble(const dap::DisassembleRequest &request);

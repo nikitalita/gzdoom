@@ -333,6 +333,99 @@ std::shared_ptr<Binary> PexCache::AddScript(const std::string &scriptPath) {
 		return response;
 	}
 
+inline bool lineIsFunctionDeclaration(const std::string &line, const std::string &function_name){
+  	std::string new_line = line;
+  	new_line.erase(0, new_line.find_first_not_of(" \t\n"));
+  	new_line.erase(new_line.find_last_not_of(" \t\n") + 1);
+
+	auto func_name_pos = new_line.find(function_name);
+	if (func_name_pos == std::string::npos){
+		return false;
+	}
+
+  	// hack for deprecated annotated functions
+  if (new_line.find("deprecated(") != std::string::npos) {
+		return true;
+	}
+	auto func_name_end = func_name_pos + function_name.size();
+	if (func_name_end >= line.size()){
+		return false;
+	}
+	// trim the whitespace of the line
+  	// if there's no whitespace in the line now, it's not a function declaration
+  	if (new_line.find_first_of(" \t\n") == std::string::npos){
+			return false;
+		}
+  	auto open_paren_pos = new_line.find_first_not_of(" \t\n", func_name_end);
+  	if (open_paren_pos == std::string::npos || new_line[open_paren_pos] != '('){
+  		return false;
+  	}
+  	if (new_line.find("super.") != std::string::npos) {
+  		return false;
+  	}
+	return true;
+}
+
+// TODO: make this more efficient
+// find the LINE that the function declaration starts on, lines starting at 1
+int findFunctionDeclaration(const std::shared_ptr<Binary> &source, const VMScriptFunction * func, int start_line_from_1){
+  	std::string source_code = source->sourceCode;
+  	// convert source_code to lowercase
+  	std::transform(source_code.begin(), source_code.end(), source_code.begin(), ::tolower);
+  	std::string function_name = func->Name.GetChars();
+  	std::transform(function_name.begin(), function_name.end(), function_name.begin(), ::tolower);
+  	
+  	auto lines = Split(source_code, "\n");
+  	auto func_decl_line = source->GetFunctionLineRange(func).first;
+  	// void funcs have a minimum line that is equal to the func decl line because the hidden return is mapped to it
+  	if (func_decl_line - 1 > 0 && lines[func_decl_line - 1].find(function_name) != std::string::npos && lines[func_decl_line - 1].find("void") != std::string::npos){
+			return func_decl_line;
+		}
+
+  	if (start_line_from_1 == 0) {
+			start_line_from_1 = lines.size() - 1;  		
+  	} else {
+  		start_line_from_1 = start_line_from_1 - 1; //std::min(start_line_from_1, std::min(line_range_from_1.second, lines.size())) - 1;
+  	}
+  	for (int i = start_line_from_1; i >= 0; i--){
+			auto &line = lines[i];
+  		// find the line that contains the function name
+  		auto func_name_pos = line.find(function_name);
+			if (func_name_pos != std::string::npos && lineIsFunctionDeclaration(lines[i], function_name)){
+				
+				return i + 1;
+			}
+		}
+  	return 0;
+}
+
+std::shared_ptr<DisassemblyLine> PexCache::make_instruction(VMScriptFunction *func, int ref,
+                                                            const std::string &instruction_text,
+                                                            const std::string &opcode, const std::string &comment,
+                                                            unsigned long long ipnum, const std::string &pointed_symbol) {
+	std::shared_ptr<DisassemblyLine> instruction = std::make_shared<DisassemblyLine>();
+  instruction->function = func->QualifiedName;
+  instruction->instruction = instruction_text;
+	instruction->address = (void*)ipnum;
+	instruction->bytes = opcode;
+	instruction->comment = comment;
+	instruction->ref = ref;
+	instruction->line = func->PCToLine((const VMOP *)instruction->address);
+	instruction->is_valid_bp = true;
+	if (instruction->line < 0) {
+		// find the max line number
+		int max_line = 0;
+		for (size_t li = 0; li < func->LineInfoCount; ++li){
+			if (func->LineInfo[li].LineNumber > max_line){
+				max_line = func->LineInfo[li].LineNumber;
+			}
+		}
+		instruction->line = max_line + 1;
+	}
+	instruction->endLine = instruction->line;
+  instruction->pointed_symbol = pointed_symbol;
+	return instruction;
+}
 
 uint64_t PexCache::AddDisassemblyLines(VMScriptFunction* func, DisassemblyMap &instructions){
 #if defined(_WIN32) || defined(_WIN64)
@@ -378,9 +471,12 @@ uint64_t PexCache::AddDisassemblyLines(VMScriptFunction* func, DisassemblyMap &i
 		ret.first->mapped().clear();
 	}
 	auto &lines_vec = ret.first->mapped();
-	size_t lines_added = 0;
 	// check if the last line in lines is empty; if so, remove it
 	std::vector<size_t> lines_to_remove;
+  auto script_name = func->SourceFileName.GetChars();
+  auto source = GetScript(script_name);
+  int min_line = INT_MAX;
+
 	for (size_t i = 0; i < lines.size(); i++)
 	{
 		auto &line = lines[i];
@@ -453,28 +549,11 @@ uint64_t PexCache::AddDisassemblyLines(VMScriptFunction* func, DisassemblyMap &i
 		auto ipnum = std::stoull(ipStr, nullptr, 16);
 
 		auto instruction = std::make_shared<DisassemblyLine>();
-		instruction->instruction = line.substr(col_pos + 11);
-		bool mismatch = false;
-		// convert ip string to void*
-		instruction->address = (void*)ipnum;
-		instruction->bytes = opcode;
-		instruction->comment = comment;
-		instruction->ref = ref;
-		instruction->line = func->PCToLine((const VMOP *)instruction->address);
-		instruction->is_valid_bp = true;
-		if (instruction->line < 0) {
-			// find the max line number
-			int max_line = 0;
-			for (size_t li = 0; li < func->LineInfoCount; ++li){
-				if (func->LineInfo[li].LineNumber > max_line){
-					max_line = func->LineInfo[li].LineNumber;
-				}
-			}
-			instruction->line = max_line + 1;
-		}
-		if (!resolved_symbol.empty())
-		{
-			instruction->pointed_symbol = resolved_symbol;
+		instruction = make_instruction(func, ref, line.substr(col_pos + 11), opcode, comment, ipnum, resolved_symbol);
+		if (instruction->line > -1) {
+			min_line = std::min(min_line, instruction->line);
+		} else {
+			int j = 0;
 		}
 		// The reason for this is that the disassembler decodes a cmp and then {jne,je,etc} as a single {bne,be,etc} instruction
 		// We want the instructions to always be 4 bytes long, so we add a dummy instruction if the current instruction is 8 bytes long
@@ -482,28 +561,46 @@ uint64_t PexCache::AddDisassemblyLines(VMScriptFunction* func, DisassemblyMap &i
 		if (instruction->instruction.front() == 'b')
 		{
 			if (instruction->instruction[1] == 'n' || instruction->instruction[1] == 'e'|| instruction->instruction[1] == 'l' || instruction->instruction[1] == 'g' ){
-				instruction->bytesize = 8;
+				// instruction->bytesize = 8;
+				// currCodePointer++;
+				// instruction->bytes += StringFormat("%02X%02X%02X%02X", currCodePointer->op, currCodePointer->a, currCodePointer->b, currCodePointer->c);
+
+				lines_vec.push_back(instruction);
 				currCodePointer++;
-				instruction->bytes += StringFormat("%02X%02X%02X%02X", currCodePointer->op, currCodePointer->a, currCodePointer->b, currCodePointer->c);
+				
+				instruction = make_instruction(func, ref, "--", StringFormat("%02X%02X%02X%02X", currCodePointer->op, currCodePointer->a, currCodePointer->b, currCodePointer->c),
+				                               StringFormat("; jmp %08X", currCodePointer->i24),
+				                               ipnum + 4, resolved_symbol);
+				min_line = std::min(min_line, instruction->line);
+				if (instruction->line > -1) {
+					min_line = std::min(min_line, instruction->line);
+				} else {
+					int j = 0;
+				}
 			}
 			// TODO: do this instead of the above
-			// lines_vec.push_back(instruction);
-			// currCodePointer++;
-			// instruction = std::make_shared<DisassemblyLine>();
-			// instruction->address = (void*)currCodePointer;
-			// instruction->bytes = StringFormat("%02X%02X%02X%02X", currCodePointer->op, currCodePointer->a, currCodePointer->b, currCodePointer->c);
-			// instruction->instruction = StringFormat("; jmp %d", currCodePointer->i24);
-			// instruction->comment = "";
-			// instruction->ref = ref;
-			// instruction->line = func->PCToLine((const VMOP *)instruction->address);
 		}
 		lines_vec.push_back(instruction);
 		currCodePointer++;
-		lines_added++;
 	}
+  if (source->sourceCode.empty()) {
+  	GetSourceContent(source->scriptPath, source->sourceCode);
+  }
+  auto func_decl_line = findFunctionDeclaration( source,func, min_line);
+  if (func_decl_line > 0) {
+	  for (auto &instruction: lines_vec) {
+	  	if (instruction->line == 588 && instruction->function.find("BeginPlay") != -1) {
+	  		int i = 0; 
+	  	}
+
+	  	if (instruction->line == min_line){
+	  		instruction->line = func_decl_line;
+	  	}
+	  }
+  }
 
 
-	return lines_added;
+	return instructions.size();
 #endif
 }
 
@@ -524,7 +621,7 @@ bool PexCache::GetDisassemblyLines(const VMOP* address, int64_t instructionOffse
 		int64_t instructions_until_start = -instructionOffset;
 		bool first = true;
 		Binary::FunctionCodeMap::iterator prev_it = it;
-		auto test_it = Binary::FunctionCodeMap::reverse_iterator(it);
+		
 		while (instructions_until_start > 0 && count > 0) {
 			// get the previous range
 			if (prev_it == m_globalCodeMap.end()){
@@ -612,6 +709,7 @@ bool PexCache::GetDisassemblyLines(const VMOP* address, int64_t instructionOffse
 			it++;
 		}
 	}
+  return true;
 }
 
 dap::ResponseOrError<dap::DisassembleResponse> PexCache::Disassemble(const dap::DisassembleRequest &request) {
@@ -653,6 +751,13 @@ dap::ResponseOrError<dap::DisassembleResponse> PexCache::Disassemble(const dap::
 		instruction.address = StringFormat("%p", line->address);
 		instruction_addrs.push_back(instruction.address);
 		instruction.line = line->line;
+		if (line->line != line->endLine && line->endLine > 0) {
+			instruction.endLine = line->endLine;
+		}
+		if (line->line == 29 && line->function.find("doSomeStupidShit") != -1) {
+			int i = 0; 
+		}
+
 		// only map the source for the first instruction, or if the source location has changed
 //		if (!bin || bin->sourceData.sourceReference.value(-1) != line->ref){
 			bin = GetCachedScript(line->ref);
