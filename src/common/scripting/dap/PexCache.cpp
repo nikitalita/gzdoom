@@ -117,7 +117,7 @@ void PexCache::PopulateFromPaths(const std::vector<std::string> &scripts, Binary
 
 
 void PexCache::ScanScriptsInContainer(int baselump, BinaryMap &p_scripts, const std::string &filter){
-		// TODO: Get the modified times from the unlinked objects?
+		// TODO: Get md5 hash of script
 		TArray<PNamespace*> namespaces;
 		std::string filterPath = filter;
   	std::vector<int> filterRefs;
@@ -183,7 +183,7 @@ void PexCache::ScanScriptsInContainer(int baselump, BinaryMap &p_scripts, const 
 						continue;
 					}
 					cls_ref = GetScriptReference(srclmpname.GetChars());
-					// TODO: Fix for mixins, this will currently not hit if the script that contains the mixin gets added after the initial scan
+					// TODO: Fix for mixins added after the initial scan, this will currently not hit if the script that contains the mixin gets added after the initial scan
 					if (!filterRefs.empty() && std::find(filterRefs.begin(), filterRefs.end(), cls_ref) == filterRefs.end()){
 						continue;
 					}
@@ -366,7 +366,7 @@ inline bool lineIsFunctionDeclaration(const std::string &line, const std::string
 	return true;
 }
 
-// TODO: make this more efficient
+// TODO: rely on compiler information somehow instead of this
 // find the LINE that the function declaration starts on, lines starting at 1
 int findFunctionDeclaration(const std::shared_ptr<Binary> &source, const VMScriptFunction * func, int start_line_from_1){
   	std::string source_code = source->sourceCode;
@@ -487,7 +487,6 @@ uint64_t PexCache::AddDisassemblyLines(VMScriptFunction* func, DisassemblyMap &i
 		auto comment_pos = line.find(';');
 		if (comment_pos == std::string::npos)
 		{
-			// TODO: make this less hacky
 			// there was a string literal with a newline in it, so we need to check the next line(s) for a comment
 			for (size_t j = i + 1; j < lines.size(); j++)
 			{
@@ -578,7 +577,6 @@ uint64_t PexCache::AddDisassemblyLines(VMScriptFunction* func, DisassemblyMap &i
 					int j = 0;
 				}
 			}
-			// TODO: do this instead of the above
 		}
 		lines_vec.push_back(instruction);
 		currCodePointer++;
@@ -721,8 +719,6 @@ void DebugServer::Binary::populateFunctionMaps() {
   functionLineMap.clear();
   functionCodeMap.clear();
 	auto qualPath = GetQualifiedPath();
-	// TODO: REMOVE THIS ONLY FOR TESTING
-	std::vector<std::pair<FunctionLineMap::range_type, std::pair<std::string, std::pair<PFunction*, VMScriptFunction*>>>> ranges_inserted;
 	int i = 0;
 	for (auto & func : functions){
 		i++;
@@ -750,7 +746,6 @@ void DebugServer::Binary::populateFunctionMaps() {
 			}
 
 			FunctionLineMap::range_type range(firstLine, lastLine + 1, scriptFunc);
-			ranges_inserted.push_back({range,{func.first.GetChars(), {func.second, scriptFunc}}});
 			auto ret = functionLineMap.insert(true, range);
 			if (ret.second == false) {
 				// Probably a mixin, just continue

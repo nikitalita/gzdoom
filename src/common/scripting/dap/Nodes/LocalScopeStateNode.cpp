@@ -33,8 +33,6 @@ namespace DebugServer
 
 	bool LocalScopeStateNode::GetChildNames(std::vector<std::string> &names)
 	{
-		// TODO: how does the VM indicate whether a function is static?
-		// apparently, it's indicated by absence of VARF_Method on VMFunction::VarFlags
 		if (m_stackFrame->Func->VarFlags & VARF_Action)
 		{
 			names.push_back(SELF);
@@ -46,6 +44,8 @@ namespace DebugServer
 			names.push_back(SELF);
 			// TODO: Figure out if there is a state_pointer in non-action methods?
 		}
+		// TODO: verify that a method is static (and has no members) as indicated by absence of VARF_Method on VMFunction::VarFlags
+
 		if (IsFunctionNative(m_stackFrame->Func))
 		{
 			// TODO: Can't introspect locals in native functions; could potentially add args?

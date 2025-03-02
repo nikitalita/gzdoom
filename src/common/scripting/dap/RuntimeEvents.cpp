@@ -52,7 +52,8 @@ namespace DebugServer
 			}
 		}
 
-		// TODO: implement the rest of the event emitters? (CreateStack, CleanupStack)
+		// TODO: Are CreateStack and CleanupStack events needed? VM execution is single-threaded and there's only one stack. 
+		// Maybe an event when the last frame gets popped off, but I'm not sure what would even need that.
 
 	}
 }

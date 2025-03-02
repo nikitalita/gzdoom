@@ -20,7 +20,6 @@ namespace DebugServer
         EVENT_DECLARATION(Log, void(int level, const char *message))
         EVENT_DECLARATION(BreakpointChanged, void(const dap::Breakpoint &bpoint, const std::string &))
 
-        // TODO: Refactor this
         void EmitBreakpointChangedEvent(const dap::Breakpoint &bpoint, const std::string &what);
         void EmitInstructionExecutionEvent(VMFrameStack *stack, VMReturn *ret, int numret, const VMOP *pc);
         void EmitLogEvent(int level, const char *message);

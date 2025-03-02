@@ -151,8 +151,8 @@ static inline bool isScriptPath(const std::string &path){
     return type->Flags & TT::TypeFlags::TYPE_Scalar;
   }
 
-  // TODO: for some reason, unitialized fields will have their lower 32-bit set to 0x00000000, but their upper 32-bit will be random;
-  // this is probably a bug, but for now, just check if the lower 32-bit is 0
+  // TODO: for some reason, unitialized fields will have their lower 32-bit set to 0x00000000, but their upper 32-bit will be random.
+  // This may be a bug; for now, just check if the lower 32-bit is 0
   static inline bool IsVMValueValid(const VMValue *val)
   {
     return !(!val || !val->a || !val->i);

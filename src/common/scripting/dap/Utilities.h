@@ -186,11 +186,6 @@ namespace DebugServer
 
 		return name;
 	}
-	// TODO: do something here
-	inline std::string NormalizeScriptName(std::string name)
-	{
-		return name;
-	}
 
 	inline int GetScriptReference(const std::string &scriptName)
 	{

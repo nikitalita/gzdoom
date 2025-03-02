@@ -18,7 +18,7 @@ class PStruct;
 class VMFunction;
 class VMScriptFunction;
 
-// TODO: don't do this
+// TODO: we may not want to do it like this, but this is the easiest way to get the opinfo.
 extern const VMOpInfo OpInfo[NUM_OPS];
 
 namespace DebugServer

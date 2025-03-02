@@ -245,12 +245,9 @@ namespace DebugServer
 
 	void ZScriptDebugger::BreakpointChanged(const dap::Breakpoint &bpoint, const std::string &reason) const
 	{
-		// TODO: make this multi-threaded
-		// XSE::GetTaskInterface()->AddTask([this, bpoint, reason]() {
 		SendEvent(dap::BreakpointEvent{
 			.breakpoint = bpoint,
 			.reason = reason});
-		// });
 	}
 
 	ZScriptDebugger::~ZScriptDebugger()
@@ -424,7 +421,6 @@ namespace DebugServer
 
 	dap::ResponseOrError<dap::StepInResponse> ZScriptDebugger::StepIn(const dap::StepInRequest &request)
 	{
-		// TODO: Support `granularity` and `target`
 		if (m_executionManager->Step(static_cast<uint32_t>(request.threadId), STEP_IN, granularityStringToEnum(request.granularity.value("line"))))
 		{
 			return dap::StepInResponse();
@@ -492,7 +488,7 @@ namespace DebugServer
 			RETURN_DAP_ERROR(StringFormat("No such variablesReference %d", request.variablesReference).c_str());
 		}
 
-		// TODO: support `start`, `filter`, parameter
+		// TODO DAP: support `start`, `filter`, parameter
 		int64_t count = 0;
 		int64_t maxCount = request.count.value(variableNodes.size());
 		for (const auto &variableNode : variableNodes)

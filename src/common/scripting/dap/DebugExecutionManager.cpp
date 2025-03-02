@@ -38,7 +38,6 @@ namespace DebugServer
 					m_lastInstruction = pc;
 					std::vector<VMFrame *> currentFrames;
 					RuntimeState::GetStackFrames(stack, currentFrames);
-					// TODO: Handle granularity
 					if (!currentFrames.empty()) {
 						ptrdiff_t stepFrameIndex = -1;
 						const auto stepFrameIter = std::find(currentFrames.begin(), currentFrames.end(), m_currentStepStackFrame);

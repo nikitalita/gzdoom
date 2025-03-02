@@ -83,9 +83,7 @@ namespace DebugServer
 				}
 				else if (pointedType->isScalar() && !pointedType->isPointer())
 				{
-					// TODO: TypeState
-
-					// TODO: fix this
+					// TODO: TypeState?
 					auto val = DerefValue(&m_variable, GetBasicType(pointedType));
 					auto deref_var = ToVariable(&val, pointedType);
 					variable.value = StringFormat("%p {%s}", (m_variable.a), deref_var.value.c_str());
@@ -131,7 +129,7 @@ namespace DebugServer
 			else if (m_type == TypeSpriteID)
 			{
 				variable.type = "SpriteID";
-				// TODO: Get the sprite name? how do they get the sprite name into the serializer??
+				// TODO: Get the sprite name? how do they get the sprite name into the serializer?
 				variable.value = StringFormat("SpriteID# %d", m_variable.i);
 			}
 			else if (m_type == TypeTextureID)
