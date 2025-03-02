@@ -6,20 +6,19 @@
 
 namespace DebugServer
 {
-	class StructStateNode : public StateNodeBase, public IProtocolVariableSerializable, public IStructuredState
-	{
-		std::string m_name;
+class StructStateNode : public StateNodeBase, public IProtocolVariableSerializable, public IStructuredState
+{
+	std::string m_name;
 
-		const VMValue m_value;
-		PType *m_type;
-		caseless_path_map<std::shared_ptr<StateNodeBase>> m_children;
-
+	const VMValue m_value;
+	PType *m_type;
+	caseless_path_map<std::shared_ptr<StateNodeBase>> m_children;
 	public:
-		StructStateNode(std::string name, const VMValue value, PType *knownType);
+	StructStateNode(std::string name, const VMValue value, PType *knownType);
 
-		bool SerializeToProtocol(dap::Variable &variable) override;
+	bool SerializeToProtocol(dap::Variable &variable) override;
 
-		bool GetChildNames(std::vector<std::string> &names) override;
-		bool GetChildNode(std::string name, std::shared_ptr<StateNodeBase> &node) override;
-	};
+	bool GetChildNames(std::vector<std::string> &names) override;
+	bool GetChildNode(std::string name, std::shared_ptr<StateNodeBase> &node) override;
+};
 }

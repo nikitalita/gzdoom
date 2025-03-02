@@ -6,36 +6,35 @@
 
 namespace DebugServer
 {
-	class StateNodeBase
-	{
-		uint32_t m_id = 0;
-
+class StateNodeBase
+{
+	uint32_t m_id = 0;
 	public:
-		virtual ~StateNodeBase() = default;
+	virtual ~StateNodeBase() = default;
 
-		int GetId() const;
+	int GetId() const;
 
-		void SetId(uint32_t id);
-	};
+	void SetId(uint32_t id);
+};
 
-	class RuntimeState;
+class RuntimeState;
 
-	class IProtocolVariableSerializable
-	{
+class IProtocolVariableSerializable
+{
 	public:
-		virtual bool SerializeToProtocol(dap::Variable &variable) = 0;
-	};
+	virtual bool SerializeToProtocol(dap::Variable &variable) = 0;
+};
 
-	class IProtocolScopeSerializable
-	{
+class IProtocolScopeSerializable
+{
 	public:
-		virtual bool SerializeToProtocol(dap::Scope &scope) = 0;
-	};
+	virtual bool SerializeToProtocol(dap::Scope &scope) = 0;
+};
 
-	class IStructuredState
-	{
+class IStructuredState
+{
 	public:
-		virtual bool GetChildNames(std::vector<std::string> &names) = 0;
-		virtual bool GetChildNode(std::string name, std::shared_ptr<StateNodeBase> &node) = 0;
-	};
+	virtual bool GetChildNames(std::vector<std::string> &names) = 0;
+	virtual bool GetChildNode(std::string name, std::shared_ptr<StateNodeBase> &node) = 0;
+};
 }

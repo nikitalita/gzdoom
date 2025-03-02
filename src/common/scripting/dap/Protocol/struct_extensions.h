@@ -7,31 +7,31 @@
 namespace dap
 {
 
-  // Extended AttachRequest struct for implementation specific parameters
+// Extended AttachRequest struct for implementation specific parameters
 
-  struct PDSAttachRequest : public AttachRequest
-  {
-    using Response = AttachResponse;
-    string name;
-    string type;
-    string request;
-    optional<string> projectPath;
-    optional<string> projectArchive;
-    optional<array<Source>> projectSources;
-  };
+struct PDSAttachRequest : public AttachRequest
+{
+	using Response = AttachResponse;
+	string name;
+	string type;
+	string request;
+	optional<string> projectPath;
+	optional<string> projectArchive;
+	optional<array<Source>> projectSources;
+};
 
-  struct PDSLaunchRequest : public LaunchRequest
-  {
-    using Response = LaunchResponse;
-    string name;
-    string type;
-    string request;
-    optional<string> projectPath;
-    optional<string> projectArchive;
-    optional<array<Source>> projectSources;
-  };
+struct PDSLaunchRequest : public LaunchRequest
+{
+	using Response = LaunchResponse;
+	string name;
+	string type;
+	string request;
+	optional<string> projectPath;
+	optional<string> projectArchive;
+	optional<array<Source>> projectSources;
+};
 
-  DAP_DECLARE_STRUCT_TYPEINFO(PDSAttachRequest);
-  DAP_DECLARE_STRUCT_TYPEINFO(PDSLaunchRequest);
+DAP_DECLARE_STRUCT_TYPEINFO(PDSAttachRequest);
+DAP_DECLARE_STRUCT_TYPEINFO(PDSLaunchRequest);
 
 }
