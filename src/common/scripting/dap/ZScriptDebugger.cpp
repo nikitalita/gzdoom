@@ -396,10 +396,21 @@ namespace DebugServer
 		}
 		return response;
 	}
+
+	inline StepGranularity granularityStringToEnum(const std::string &granularity)
+	{
+		if (granularity == "instruction") {
+			return StepGranularity::kInstruction;
+		} else if (granularity == "statement") {
+			return StepGranularity::kStatement;
+		}
+		return StepGranularity::kLine;
+	}
+
 	dap::ResponseOrError<dap::StepInResponse> ZScriptDebugger::StepIn(const dap::StepInRequest &request)
 	{
 		// TODO: Support `granularity` and `target`
-		if (m_executionManager->Step(static_cast<uint32_t>(request.threadId), STEP_IN))
+		if (m_executionManager->Step(static_cast<uint32_t>(request.threadId), STEP_IN, granularityStringToEnum(request.granularity.value("line"))))
 		{
 			return dap::StepInResponse();
 		}
@@ -407,7 +418,7 @@ namespace DebugServer
 	}
 	dap::ResponseOrError<dap::StepOutResponse> ZScriptDebugger::StepOut(const dap::StepOutRequest &request)
 	{
-		if (m_executionManager->Step(static_cast<uint32_t>(request.threadId), STEP_OUT))
+		if (m_executionManager->Step(static_cast<uint32_t>(request.threadId), STEP_OUT, granularityStringToEnum(request.granularity.value("line"))))
 		{
 			return dap::StepOutResponse();
 		}
@@ -415,7 +426,7 @@ namespace DebugServer
 	}
 	dap::ResponseOrError<dap::NextResponse> ZScriptDebugger::Next(const dap::NextRequest &request)
 	{
-		if (m_executionManager->Step(static_cast<uint32_t>(request.threadId), STEP_OVER))
+		if (m_executionManager->Step(static_cast<uint32_t>(request.threadId), STEP_OVER, granularityStringToEnum(request.granularity.value("line"))))
 		{
 			return dap::NextResponse();
 		}

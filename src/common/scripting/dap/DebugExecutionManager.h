@@ -17,8 +17,16 @@ namespace DebugServer
 		STEP_OUT
 	};
 
+	enum StepGranularity
+	{
+		kInstruction = 0,
+		kLine,
+		kStatement
+	};
+
 	class DebugExecutionManager
 	{
+		
 		enum class DebuggerState
 		{
 			kRunning = 0,
@@ -45,6 +53,9 @@ namespace DebugServer
 		std::atomic<DebuggerState> m_state = DebuggerState::kRunning;
 		std::atomic<uint32_t> m_currentStepStackId = 0;
 		StepType m_currentStepType = StepType::STEP_IN;
+		StepGranularity m_granularity;
+		int m_lastLine = -1;
+		const VMOP * m_lastInstruction = nullptr;
 		VMFrame *m_currentStepStackFrame;
 		VMFunction *m_currentVMFunction;
 
@@ -61,7 +72,7 @@ namespace DebugServer
 		void Open(std::shared_ptr<dap::Session> ses);
 		bool Continue();
 		bool Pause();
-		bool Step(uint32_t stackId, StepType stepType);
+		bool Step(uint32_t stackId, StepType stepType, StepGranularity stepGranularity);
 	private:
 		inline pauseReason CheckState(VMFrameStack *stack, VMReturn *ret, int numret, const VMOP *pc);
 	};

@@ -33,17 +33,28 @@ namespace DebugServer
 					return pauseReason::CONTINUING;
 				}
 				else if (m_currentStepStackFrame) {
+					VMScriptFunction * func = nullptr;
+					auto lastInst = m_lastInstruction;
+					m_lastInstruction = pc;
 					std::vector<VMFrame *> currentFrames;
 					RuntimeState::GetStackFrames(stack, currentFrames);
 					// TODO: Handle granularity
 					if (!currentFrames.empty()) {
 						ptrdiff_t stepFrameIndex = -1;
-						if (m_currentVMFunction && m_currentStepStackFrame->Func == m_currentVMFunction) {
-							const auto stepFrameIter = std::find(currentFrames.begin(), currentFrames.end(), m_currentStepStackFrame);
-							if (stepFrameIter != currentFrames.end()) {
-								stepFrameIndex = std::distance(currentFrames.begin(), stepFrameIter);
+						const auto stepFrameIter = std::find(currentFrames.begin(), currentFrames.end(), m_currentStepStackFrame);
+						if (stepFrameIter != currentFrames.end() && m_currentVMFunction && m_currentStepStackFrame->Func == m_currentVMFunction) {
+							stepFrameIndex = std::distance(currentFrames.begin(), stepFrameIter);
+						}
+						// Only get the function if we're not stepping by instruction and the frame exists
+						if (m_granularity != kInstruction && stepFrameIndex != -1) {
+							func = !IsFunctionNative(m_currentStepStackFrame->Func) ? dynamic_cast<VMScriptFunction *>(m_currentStepStackFrame->Func) : nullptr;
+							// if we're in the same frame, the last instruction was at the previous address, and the line is the same, we should continue
+							if (func && stepFrameIndex == 0 && lastInst == pc - 1 && m_lastLine == func->PCToLine(pc)) {
+								// NONE will cause the function to continue execution without resetting the step state
+								return pauseReason::NONE;
 							}
 						}
+
 						switch (m_currentStepType) {
 							case StepType::STEP_IN:
 								return pauseReason::step;
@@ -60,6 +71,11 @@ namespace DebugServer
 								}
 								break;
 						}
+					}
+					if (m_granularity != kInstruction && func) {
+						m_lastLine = func->PCToLine(pc);
+					} else {
+						m_lastLine = -1;
 					}
 					// we deliberately don't set shouldContinue here in an else here, as we want to continue until we hit the next step point
 				}
@@ -93,6 +109,8 @@ namespace DebugServer
 				m_currentStepStackId = 0;
 				m_currentStepStackFrame = nullptr;
 				m_currentVMFunction = nullptr;
+				m_lastLine = -1;
+				m_lastInstruction = nullptr;
 				if (m_session)
 				{
 					m_session->send(dap::ContinuedEvent{
@@ -110,6 +128,7 @@ namespace DebugServer
 				m_currentStepStackId = 0;
 				m_currentStepStackFrame = nullptr;
 				m_currentVMFunction = nullptr;
+				// don't reset the last line or last instruction here
 
 				if (m_session)
 				{
@@ -178,7 +197,7 @@ namespace DebugServer
 		return true;
 	}
 
-	bool DebugExecutionManager::Step(uint32_t stackId, const StepType stepType)
+	bool DebugExecutionManager::Step(uint32_t stackId, const StepType stepType, StepGranularity stepGranularity)
 	{
 		if (m_state != DebuggerState::kPaused)
 		{
@@ -205,6 +224,15 @@ namespace DebugServer
 		m_currentStepStackId = stackId;
 		m_currentStepType = stepType;
 		m_state = DebuggerState::kStepping;
+		m_granularity = stepGranularity;
+		m_lastInstruction = nullptr;
+		if (m_granularity != kInstruction) {
+			VMScriptFunction * func = !IsFunctionNative(m_currentStepStackFrame->Func) ? dynamic_cast<VMScriptFunction *>(m_currentStepStackFrame->Func) : nullptr;
+			if (func){
+				m_lastInstruction = m_currentStepStackFrame->PC;
+				m_lastLine = func->PCToLine(m_currentStepStackFrame->PC);
+			}
+		}
 
 		return true;
 	}
