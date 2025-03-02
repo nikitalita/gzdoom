@@ -35,7 +35,7 @@ namespace DebugServer
     {
       return binary;
     }
-    return GetScript((source.origin.has_value() ? source.origin.value() + ":" : "") + source.path.value(""));
+    return GetScript(GetScriptWithQual(source.path.value(""), source.origin.value("")));
   }
 
 
@@ -106,27 +106,36 @@ void PexCache::ScanAllScripts(){
 	}
 }
 
+void PexCache::PopulateFromPaths(const std::vector<std::string> &scripts, BinaryMap &p_scripts, bool clobber) {
+  for (auto &scriptPath: scripts){
+		auto ref = GetScriptReference(scriptPath);
+		if (clobber || p_scripts.find(ref) == p_scripts.end()) {
+			p_scripts[ref] = makeEmptyBinary(scriptPath);
+		}
+	}
+}
+
 
 void PexCache::ScanScriptsInContainer(int baselump, BinaryMap &p_scripts, const std::string &filter){
 		// TODO: Get the modified times from the unlinked objects?
 		TArray<PNamespace*> namespaces;
 		std::string filterPath = filter;
-		int filterRef = -1;
+  	std::vector<int> filterRefs;
 		if (!filter.empty()) {
-			std::string truncScriptPath = GetScriptPathNoQual(filter);
-			int filelump = fileSystem.FindFile(truncScriptPath.c_str());
-			if (filelump == -1) {
+			auto found = FindScripts(filter, baselump);
+			if (found.empty()) {
 				return;
 			}
-			baselump = fileSystem.GetFileContainer(filelump);
-			if (baselump == -1) {
+			for (auto &script: found) {
+				filterRefs.push_back(GetScriptReference(script));
+			}
+			PopulateFromPaths(found, p_scripts, true);
+		} else {
+			auto found = FindAllScripts(baselump);
+			if (found.empty()) {
 				return;
 			}
-			if (truncScriptPath == filter) {
-				filterPath = GetScriptWithQual(filter, fileSystem.GetResourceFileName(baselump));
-			}
-			filterRef = GetScriptReference(filterPath);
-			p_scripts[filterRef] = makeEmptyBinary(filterPath);
+			PopulateFromPaths(found, p_scripts, true);
 		}
 		if (baselump == -1){
 			namespaces = Namespaces.AllNamespaces;
@@ -146,22 +155,9 @@ void PexCache::ScanScriptsInContainer(int baselump, BinaryMap &p_scripts, const 
 				p_scripts[ref] = makeEmptyBinary(scriptPath);
 			}
 		};
-		// get all the script names in the container
 		for (auto ns: namespaces) {
 			if (!ns){
 				continue;
-			}
-			std::vector<std::string> scriptNames;
-			if (filterRef == -1) {
-				for (int i = 0; i < fileSystem.GetNumEntries(); ++i) {
-					if (baselump == -1 || fileSystem.GetFileContainer(i) == ns->FileNum) {
-						std::string scriptPath = fileSystem.GetFileFullName(i);
-						if (isScriptPath(scriptPath)) {
-							p_scripts[GetScriptReference(scriptPath)] = makeEmptyBinary(scriptPath);
-						}
-						scriptNames.push_back(scriptPath);
-					}
-				}
 			}
 
 			auto it = ns->Symbols.GetIterator();
@@ -188,7 +184,7 @@ void PexCache::ScanScriptsInContainer(int baselump, BinaryMap &p_scripts, const 
 					}
 					cls_ref = GetScriptReference(srclmpname.GetChars());
 					// TODO: Fix for mixins, this will currently not hit if the script that contains the mixin gets added after the initial scan
-					if (filterRef != -1 && filterRef != cls_ref) {
+					if (!filterRefs.empty() && std::find(filterRefs.begin(), filterRefs.end(), cls_ref) == filterRefs.end()){
 						continue;
 					}
 					addEmptyBinIfNotExists(cls_ref, srclmpname.GetChars());
@@ -224,7 +220,7 @@ void PexCache::ScanScriptsInContainer(int baselump, BinaryMap &p_scripts, const 
 										continue;
 									}
 									auto script_ref = GetScriptReference(scriptFunc->SourceFileName.GetChars());
-									if (filterRef != -1 && filterRef != script_ref){
+									if (!filterRefs.empty() && std::find(filterRefs.begin(), filterRefs.end(), script_ref) == filterRefs.end()){
 										continue;
 									}
 									addEmptyBinIfNotExists(script_ref, scriptFunc->SourceFileName.GetChars());
@@ -264,7 +260,6 @@ std::shared_ptr<Binary> PexCache::AddScript(const std::string &scriptPath) {
 	}
   std::shared_ptr<Binary> PexCache::GetScript(std::string fqsn)
   {
-		fqsn = GetScriptPathNoQual(fqsn);
 		uint32_t reference = GetScriptReference(fqsn);
 		auto binary = GetCachedScript(reference);
 		if (binary){
@@ -275,7 +270,7 @@ std::shared_ptr<Binary> PexCache::AddScript(const std::string &scriptPath) {
 
   inline bool GetSourceContent(const std::string &scriptPath, std::string &decompiledSource)
   {
-    auto lump = fileSystem.FindFile(GetScriptPathNoQual(scriptPath).c_str());
+    auto lump = GetScriptFileID(scriptPath);
     if (lump == -1)
     {
       return false;
@@ -724,5 +719,15 @@ void DebugServer::Binary::populateFunctionMaps() {
 		}
     
   }
+
+}
+
+std::pair<int, int> DebugServer::Binary::GetFunctionLineRange(const VMScriptFunction *func) {
+	for (auto &pair: functionLineMap) {
+		if (pair.mapped() == func) {
+			return {pair.range().get_left(), pair.range().get_right()};
+		}
+	}
+	return {0, 0};
 
 }

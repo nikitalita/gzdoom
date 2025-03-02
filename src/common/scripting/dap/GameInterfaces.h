@@ -82,30 +82,12 @@ static inline std::string GetScriptWithQual(const std::string &scriptPath, const
 }
 
 
-static inline std::string GetArchiveName(const std::string &scriptPath){
+static inline std::string GetArchiveNameFromPath(const std::string &scriptPath){
 	auto colonPos = scriptPath.find(':');
 	if (colonPos != std::string::npos){
 		return scriptPath.substr(0, colonPos);
 	}
-	auto lump = fileSystem.FindFile(scriptPath.c_str());
-	if (lump == -1){
-		return "";
-	}
-	auto wadnum = fileSystem.GetFileContainer(lump);
-	if (wadnum == -1){
-		return "";
-	}
-	return fileSystem.GetResourceFileName(wadnum);
-}
-
-static inline std::string GetFullyQualifiedScriptName(const std::string &fqsn){
-	if (!ScriptHasQual(fqsn)){
-		auto archive_name = GetArchiveName(fqsn);
-		if (!archive_name.empty()){
-			return GetScriptWithQual(fqsn, archive_name);
-		}
-	}
-	return fqsn;
+  return {};
 }
 
 inline std::string normalizePath(const std::string &path){
@@ -386,4 +368,65 @@ static inline bool isScriptPath(const std::string &path){
   {
     return IsBasicType(type) && !(type->Flags & TT::TypeFlags::TYPE_Pointer);
   }
+
+  static int GetScriptFileID(const std::string &script_path) {
+    int containerLump = -1;
+    std::string namespaceName = GetArchiveNameFromPath(script_path);
+    if (!namespaceName.empty()) {
+      containerLump = fileSystem.CheckIfResourceFileLoaded(namespaceName.c_str());
+    }
+    std::string truncScriptPath = GetScriptPathNoQual(script_path);
+    return fileSystem.CheckNumForFullName(truncScriptPath.c_str(), true, containerLump != -1 ? containerLump : FileSys::ns_global);
+  }
+
+  static std::vector<std::string> FindScripts(const std::string &filter, int baselump = -1) {
+    std::set<std::string> scriptNames;
+    int filelump = -1;
+    int containerLump = baselump;
+    std::string path = filter;
+    TArray<PNamespace *> namespaces;
+    if (baselump == -1){
+      namespaces = Namespaces.AllNamespaces;
+    } else {
+      for (auto ns: Namespaces.AllNamespaces) {
+        if (ns->FileNum == baselump) {
+          namespaces.Push(ns);
+          break;
+        }
+      }
+    }
+
+    for (auto ns: namespaces) {
+      std::string namespaceName = GetArchiveNameFromPath(filter);
+      std::string truncScriptPath = GetScriptPathNoQual(filter);
+      filelump = fileSystem.CheckNumForFullName(truncScriptPath.c_str(), true, ns->FileNum);
+      if (filelump == -1) {
+        break;
+      }
+      containerLump = fileSystem.GetFileContainer(filelump);
+      if (truncScriptPath == filter) {
+        path = GetScriptWithQual(filter, fileSystem.GetResourceFileName(containerLump));
+      }
+      scriptNames.insert(path);
+    }
+    return {scriptNames.begin(), scriptNames.end()};
+  }
+
+  static std::vector<std::string> FindAllScripts(int baselump = -1) {
+    std::vector<std::string> scriptNames;
+    for (int i = 0; i < fileSystem.GetNumEntries(); ++i) {
+      auto fc = fileSystem.GetFileContainer(i);
+      if (baselump == -1 || fc == baselump) {
+        // get the container name
+        std::string containerName = fileSystem.GetResourceFileName(fc);
+        std::string scriptPath = fileSystem.GetFileFullName(i);
+        std::string fqn = GetScriptWithQual(scriptPath, containerName);
+        if (isScriptPath(fqn)) {
+          scriptNames.push_back(fqn);
+        }
+      }
+    }
+    return scriptNames;
+  }
+
 }

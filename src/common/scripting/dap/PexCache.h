@@ -91,6 +91,8 @@ namespace DebugServer
 		using scripts_lock = std::scoped_lock<std::recursive_mutex>;
 		BinaryPtr _AddScript(const std::string &scriptPath);
 
+		static void PopulateFromPaths(const std::vector<std::string> &scripts, BinaryMap &p_scripts, bool clobber = false);
+
 		static void ScanScriptsInContainer(int baselump, BinaryMap &m_scripts, const std::string &filter = "");
 		static BinaryPtr makeEmptyBinary(const std::string &scriptPath);
 		DisassemblyMap m_disassemblyMap;
