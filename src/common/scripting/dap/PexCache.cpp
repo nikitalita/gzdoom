@@ -47,7 +47,7 @@ PexCache::BinaryPtr PexCache::makeEmptyBinary(const std::string &scriptPath){
 	{
 		truncScriptPath = scriptPath.substr(colonPos + 1);
 	}
-	binary->lump = fileSystem.FindFile(truncScriptPath.c_str());
+	binary->lump = GetScriptFileID(scriptPath);
 	int wadnum = fileSystem.GetFileContainer(binary->lump);
 	binary->scriptName = truncScriptPath.substr(truncScriptPath.find_last_of("/\\") + 1);
 	binary->scriptPath = truncScriptPath;
