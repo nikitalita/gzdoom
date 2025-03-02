@@ -55,6 +55,36 @@ namespace DebugServer
 		return buf;
 	}
 
+	static inline std::string StripColorCodes(const std::string &str)
+	{
+		TArray<char> copy(str.size() + 1);
+		const char * srcp = str.c_str();
+		char * dstp = copy.Data();
+
+		while (*srcp != 0)
+		{
+
+			if (*srcp != TEXTCOLOR_ESCAPE)
+			{
+				*dstp++ = *srcp++;
+			}
+			else if (srcp[1] == '[')
+			{
+				srcp += 2;
+				while (*srcp != ']' && *srcp != 0) srcp++;
+				if (*srcp == ']') srcp++;
+			}
+			else
+			{
+				if (srcp[1] != 0) srcp += 2;
+				else break;
+			}
+		}
+		*dstp = 0;
+
+		return copy.Data();
+	}
+
 	template <typename... Args>
 	void LogError(const char *fmt, Args... args)
 	{
